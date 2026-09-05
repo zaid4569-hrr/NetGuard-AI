@@ -1,0 +1,16 @@
+{
+  "name": "netguard-ai",
+  "version": "1.0.0",
+  "description": "[![Smart India Hackathon](https://img.shields.io/badge/Smart%20India%20Hackathon-Cybersecurity-blue.svg)](https://sih.gov.in) [![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg)](https://fastapi.tiangolo.com/) [![React](https://img.shields.io/badge/React-18%2B-61DAFB.svg)](https://react.dev/) [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4%2B-38B2AC.svg)](https://tailwindcss.com/) [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local%20Execution-emerald.svg)](#privacy-model)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

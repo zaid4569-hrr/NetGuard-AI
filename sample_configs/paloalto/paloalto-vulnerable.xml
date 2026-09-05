@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!-- ============================================================================== -->
+<!-- NetGuard AI Synthetic Lab Configuration (Intentionally Vulnerable PAN-OS)     -->
+<!-- WARNING: FOR AUDIT SIMULATION ONLY — NOT FOR PRODUCTION USE                    -->
+<!-- ============================================================================== -->
+<config version="10.1.0" urldb="paloaltonetworks">
+  <mgt-config>
+    <users>
+      <entry name="admin">
+        <phash>cleartext_admin_pwd</phash>
+        <permissions>
+          <role-based>
+            <superuser>yes</superuser>
+          </role-based>
+        </permissions>
+      </entry>
+    </users>
+  </mgt-config>
+  <devices>
+    <entry name="localhost.localdomain">
+      <deviceconfig>
+        <system>
+          <hostname>PaloAlto-Lab-FW-01</hostname>
+          <ip-address>192.0.2.50</ip-address>
+          <netmask>255.255.255.0</netmask>
+          <default-gateway>192.0.2.1</default-gateway>
+          <service>
+            <disable-telnet>no</disable-telnet>
+            <disable-http>no</disable-http>
+          </service>
+          <login-banner></login-banner>
+          <idle-timeout>480</idle-timeout>
+        </system>
+      </deviceconfig>
+      <network>
+        <interface>
+          <ethernet>
+            <entry name="ethernet1/1">
+              <layer3>
+                <ip>
+                  <entry name="192.0.2.100/24"/>
+                </ip>
+              </layer3>
+            </entry>
+          </ethernet>
+        </interface>
+        <profiles>
+          <interface-management-profile>
+            <entry name="allow-all-mgmt">
+              <telnet>yes</telnet>
+              <http>yes</http>
+              <ssh>yes</ssh>
+              <https>yes</https>
+            </entry>
+          </profiles>
+        </profiles>
+      </network>
+      <vsys>
+        <entry name="vsys1">
+          <rulebase>
+            <security>
+              <rules>
+                <entry name="allow-all-unrestricted">
+                  <to>
+                    <member>any</member>
+                  </to>
+                  <from>
+                    <member>any</member>
+                  </from>
+                  <source>
+                    <member>any</member>
+                  </source>
+                  <destination>
+                    <member>any</member>
+                  </destination>
+                  <application>
+                    <member>any</member>
+                  </application>
+                  <service>
+                    <member>any</member>
+                  </service>
+                  <action>allow</action>
+                </entry>
+              </rules>
+            </security>
+          </rulebase>
+        </entry>
+      </vsys>
+    </entry>
+  </devices>
+</config>
