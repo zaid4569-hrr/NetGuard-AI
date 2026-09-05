@@ -38,8 +38,8 @@ export const Signup: React.FC = () => {
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long.');
+    if (password.length < 12 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setErrorMsg('Use 12+ characters with uppercase, lowercase, a number, and a symbol.');
       return;
     }
 

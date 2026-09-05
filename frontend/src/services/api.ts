@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { Assessment, Device, ComplianceRule } from '../types';
-import { MOCK_ASSESSMENT, MOCK_RULES } from './mockData';
+import { getAuthToken } from '../context/AuthContext';
 
 const API_BASE = '/api';
+const authHeaders = () => ({ Authorization: `Bearer ${getAuthToken() || ''}` });
 
 export interface CompareResult {
   score_before: number;
@@ -65,93 +66,72 @@ export const apiClient = {
 
     try {
       const res = await axios.post(`${API_BASE}/assessment/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': 'multipart/form-data', ...authHeaders() },
         timeout: 30000
       });
       return res.data;
     } catch (err) {
-      console.warn('Backend upload failed or offline. Using simulated assessment result.', err);
-      return MOCK_ASSESSMENT;
+      throw err;
     }
   },
 
   // Get assessment details
   getAssessment: async (id: string): Promise<Assessment> => {
     try {
-      const res = await axios.get(`${API_BASE}/assessment/${id}`, { timeout: 5000 });
+      const res = await axios.get(`${API_BASE}/assessment/${id}`, { timeout: 5000, headers: authHeaders() });
       return res.data;
     } catch (err) {
-      return MOCK_ASSESSMENT;
+      throw err;
     }
   },
 
   // List historical assessments
   listAssessments: async (): Promise<any[]> => {
     try {
-      const res = await axios.get(`${API_BASE}/assessment`, { timeout: 5000 });
+      const res = await axios.get(`${API_BASE}/assessment`, { timeout: 5000, headers: authHeaders() });
       return res.data;
     } catch (err) {
-      return [
-        {
-          id: MOCK_ASSESSMENT.id,
-          name: MOCK_ASSESSMENT.name,
-          created_at: MOCK_ASSESSMENT.created_at,
-          total_devices: MOCK_ASSESSMENT.total_devices,
-          overall_score: MOCK_ASSESSMENT.overall_score,
-          critical_count: MOCK_ASSESSMENT.critical_count,
-          high_count: MOCK_ASSESSMENT.high_count,
-          medium_count: MOCK_ASSESSMENT.medium_count,
-          low_count: MOCK_ASSESSMENT.low_count
-        }
-      ];
+      throw err;
     }
   },
 
   // Delete assessment
   deleteAssessment: async (id: string): Promise<boolean> => {
     try {
-      await axios.delete(`${API_BASE}/assessment/${id}`);
+      await axios.delete(`${API_BASE}/assessment/${id}`, { headers: authHeaders() });
       return true;
     } catch (err) {
-      return true;
+      return false;
     }
   },
 
   // Get device details
   getDevice: async (deviceId: string): Promise<Device> => {
     try {
-      const res = await axios.get(`${API_BASE}/devices/${deviceId}`, { timeout: 5000 });
+      const res = await axios.get(`${API_BASE}/devices/${deviceId}`, { timeout: 5000, headers: authHeaders() });
       return res.data;
     } catch (err) {
-      const found = MOCK_ASSESSMENT.devices.find(d => d.id === deviceId);
-      if (found) {
-        return {
-          ...found,
-          findings: MOCK_ASSESSMENT.findings.filter(f => f.device_id === deviceId),
-          category_scores: MOCK_ASSESSMENT.category_scores
-        };
-      }
-      return MOCK_ASSESSMENT.devices[0];
+      throw err;
     }
   },
 
   // List rules
   listRules: async (): Promise<ComplianceRule[]> => {
     try {
-      const res = await axios.get(`${API_BASE}/rules`, { timeout: 5000 });
+      const res = await axios.get(`${API_BASE}/rules`, { timeout: 5000, headers: authHeaders() });
       return res.data;
     } catch (err) {
-      return MOCK_RULES;
+      throw err;
     }
   },
 
   // List vendors
   listVendors: async (): Promise<string[]> => {
     try {
-      const res = await axios.get(`${API_BASE}/vendors`, { timeout: 5000 });
+      const res = await axios.get(`${API_BASE}/vendors`, { timeout: 5000, headers: authHeaders() });
       return res.data;
     } catch (err) {
-      return ['Cisco', 'Fortinet', 'Juniper', 'Palo Alto', 'MikroTik', 'Aruba'];
+      throw err;
     }
   },
 
@@ -162,39 +142,9 @@ export const apiClient = {
         before_config: beforeConfig,
         after_config: afterConfig,
         vendor_override: vendorOverride
-      }, { timeout: 15000 });
+      }, { timeout: 15000, headers: authHeaders() });
       return res.data;
-    } catch (err) {
-      // Return simulated diff result if backend offline
-      return {
-        score_before: 61.0,
-        score_after: 88.0,
-        score_delta: 27.0,
-        vendor_before: vendorOverride || 'Cisco',
-        vendor_after: vendorOverride || 'Cisco',
-        total_findings_before: 7,
-        total_findings_after: 2,
-        resolved_findings: [
-          { rule_id: 'NET-MGMT-001', title: 'Telnet Remote Management Enabled', severity: 'CRITICAL', category: 'Remote Management' },
-          { rule_id: 'NET-AUTH-001', title: 'Cleartext Password Storage', severity: 'HIGH', category: 'Authentication' },
-          { rule_id: 'NET-SNMP-002', title: 'Default SNMP Community String', severity: 'HIGH', category: 'SNMP Security' },
-          { rule_id: 'NET-ACL-002', title: 'Unrestricted Management Plane Access', severity: 'HIGH', category: 'Access Control' },
-          { rule_id: 'NET-CRYPTO-001', title: 'Deprecated Ciphers in VPN (3DES/MD5)', severity: 'HIGH', category: 'Cryptography' }
-        ],
-        new_findings: [],
-        diff_lines: [
-          { type: 'removed', text: 'no service password-encryption' },
-          { type: 'added', text: 'service password-encryption' },
-          { type: 'removed', text: 'enable password SecretAdminPassword123' },
-          { type: 'added', text: 'enable secret 9 $9$m0Q8H1...StrongHash' },
-          { type: 'removed', text: 'transport input telnet' },
-          { type: 'added', text: 'transport input ssh' },
-          { type: 'unchanged', text: 'hostname Cisco-Lab-Router' },
-          { type: 'removed', text: 'snmp-server community public RO' },
-          { type: 'added', text: 'snmp-server group SECGROUP v3 priv' }
-        ]
-      };
-    }
+    } catch (err) { throw err; }
   },
 
   // AI Copilot query
@@ -203,42 +153,17 @@ export const apiClient = {
       const res = await axios.post(`${API_BASE}/copilot/query`, {
         prompt,
         assessment_id: assessmentId
-      }, { timeout: 15000 });
+      }, { timeout: 15000, headers: authHeaders() });
       return res.data;
-    } catch (err) {
-      return {
-        query: prompt,
-        response: `NetGuard AI offline reasoning: Your composite posture score is 74.0/100. The highest-impact risk is unencrypted Telnet transport coupled with missing management access-lists on your perimeter core. Applying SSHv2 and access-class filters will improve your posture score by +18 points.`,
-        grounded_context: { score: 74.0, total_devices: 4, critical_count: 2 },
-        provider: 'local-threat-graph',
-        suggestions: [
-          'What are my most dangerous findings?',
-          'Why is my security score low?',
-          'Which device should I fix first?',
-          'What CIS controls are affected?',
-          'Summarize this audit for management.'
-        ]
-      };
-    }
+    } catch (err) { throw err; }
   },
 
   // Explain Finding
   explainFinding: async (findingData: any): Promise<ExplainFindingResponse> => {
     try {
-      const res = await axios.post(`${API_BASE}/copilot/explain-finding`, findingData, { timeout: 10000 });
+      const res = await axios.post(`${API_BASE}/copilot/explain-finding`, findingData, { timeout: 10000, headers: authHeaders() });
       return res.data;
-    } catch (err) {
-      return {
-        rule_id: findingData.rule_id || 'NET-MGMT-001',
-        title: findingData.title || 'Security Issue',
-        problem: `Device configuration contains insecure parameter: ${findingData.evidence || 'insecure service active'}.`,
-        why_it_matters: 'Allows cleartext interception of administrative credentials across intermediate transit networks.',
-        security_impact: 'High probability of credential harvesting and device reconfiguration.',
-        recommended_action: findingData.recommendation || 'Disable legacy protocols and enforce cryptographic transport.',
-        priority: findingData.severity === 'CRITICAL' ? 'P0 - Immediate Action' : 'P1 - High Priority',
-        remediation_command: findingData.remediation_script
-      };
-    }
+    } catch (err) { throw err; }
   },
 
   // Get PDF report URL
@@ -255,7 +180,7 @@ export const apiClient = {
     try {
       const res = await axios.get(`${API_BASE}/report/${assessmentId}/pdf`, {
         responseType: 'blob',
-        timeout: 30000
+        timeout: 30000, headers: authHeaders()
       });
       blob = res.data;
     } catch (err) {

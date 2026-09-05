@@ -1,1 +1,4 @@
 node_modules
+backend/data/*.key
+backend/data/*.db
+backend/reports/

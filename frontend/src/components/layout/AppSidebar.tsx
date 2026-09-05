@@ -37,7 +37,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed, onToggle }) =
         { label: 'Devices', path: '/devices', icon: Server },
         { label: 'Findings', path: '/findings', icon: Search },
         { label: 'Compare Configs', path: '/compare', icon: GitCompare },
-        { label: 'Remediation', path: '/remediation', icon: Wrench },
+        { label: 'Config Advisor', path: '/remediation', icon: Wrench },
       ]
     },
     {

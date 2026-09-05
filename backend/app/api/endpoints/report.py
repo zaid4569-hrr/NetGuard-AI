@@ -4,13 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.models.db_models import AssessmentModel
+from app.models.db_models import AssessmentModel, UserModel
+from app.security.auth import require_user
 from app.reports.pdf_generator import AuditReportGenerator
 
 router = APIRouter(prefix="/report", tags=["Reports"])
 
 @router.get("/{assessment_id}/pdf")
-async def export_pdf_report(assessment_id: str, db: AsyncSession = Depends(get_db)):
+async def export_pdf_report(assessment_id: str, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
     """
     Generates and streams a professional PDF compliance audit report for the given assessment.
     """
@@ -21,7 +22,7 @@ async def export_pdf_report(assessment_id: str, db: AsyncSession = Depends(get_d
             selectinload(AssessmentModel.findings),
             selectinload(AssessmentModel.category_scores)
         )
-        .where(AssessmentModel.id == assessment_id)
+        .where(AssessmentModel.id == assessment_id, AssessmentModel.owner_id == user.id)
     )
     assessment = result.scalar_one_or_none()
     if not assessment:

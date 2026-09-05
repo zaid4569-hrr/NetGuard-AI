@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     
     # Max upload limit (bytes): 20 MB
     MAX_FILE_SIZE_BYTES: int = 20 * 1024 * 1024
+    SESSION_TTL_HOURS: int = 12
+    MAX_LOGIN_FAILURES: int = 5
+    LOGIN_LOCK_MINUTES: int = 15
     
     # Security & AI settings
     MASK_SECRETS: bool = True

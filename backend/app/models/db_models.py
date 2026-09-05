@@ -11,6 +11,7 @@ class AssessmentModel(Base):
     __tablename__ = "assessments"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
+    owner_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     total_devices = Column(Integer, default=0)
@@ -26,6 +27,25 @@ class AssessmentModel(Base):
     devices = relationship("DeviceModel", back_populates="assessment", cascade="all, delete-orphan")
     findings = relationship("FindingModel", back_populates="assessment", cascade="all, delete-orphan")
     category_scores = relationship("CategoryScoreModel", back_populates="assessment", cascade="all, delete-orphan")
+
+class UserModel(Base):
+    """Local-only account record. Passwords are salted PBKDF2 hashes; profile data is encrypted."""
+    __tablename__ = "users"
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    encrypted_profile = Column(Text, nullable=False)
+    failed_login_count = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class SessionModel(Base):
+    __tablename__ = "sessions"
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class DeviceModel(Base):
     __tablename__ = "devices"

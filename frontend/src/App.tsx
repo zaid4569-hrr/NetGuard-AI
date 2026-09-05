@@ -31,6 +31,8 @@ import { DeviceDetailRoute } from './pages/DeviceDetailRoute';
 import { FindingsPage } from './pages/FindingsPage';
 import { RuleCatalog } from './pages/RuleCatalog';
 import { SettingsPage } from './pages/SettingsPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { ConfigAdvisorPage } from './pages/ConfigAdvisorPage';
 import { ComingSoon } from './pages/ComingSoon';
 
 const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -96,11 +98,7 @@ export const App: React.FC = () => {
             <Route
               path="/remediation"
               element={
-                <ComingSoon
-                  icon={Wrench}
-                  title="Remediation Center"
-                  description="Review recommended fixes for open findings, copy vendor-specific commands, and track remediation progress."
-                />
+                <ConfigAdvisorPage />
               }
             />
             <Route
@@ -144,16 +142,7 @@ export const App: React.FC = () => {
               }
             />
             <Route path="/rules" element={<RuleCatalog />} />
-            <Route
-              path="/reports"
-              element={
-                <ComingSoon
-                  icon={FileText}
-                  title="Report Center"
-                  description="Generate and download executive, technical, and compliance reports."
-                />
-              }
-            />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/profile" element={<SettingsPage />} />
           </Route>

@@ -8,7 +8,8 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.scoring import ScoringEngine
-from app.models.db_models import AssessmentModel, DeviceModel, FindingModel, CategoryScoreModel
+from app.models.db_models import AssessmentModel, DeviceModel, FindingModel, CategoryScoreModel, UserModel
+from app.security.auth import require_user
 from app.schemas.api_schemas import AssessmentDetailResponse, AssessmentSummaryResponse
 from app.security.validator import FileSecurityValidator
 from app.security.sanitizer import SecuritySanitizer
@@ -23,7 +24,7 @@ async def upload_and_assess(
     files: List[UploadFile] = File(...),
     assessment_name: Optional[str] = Form(None),
     manual_vendor: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)
 ):
     """
     Ingests one or multiple network configuration files.
@@ -38,6 +39,7 @@ async def upload_and_assess(
 
     assessment = AssessmentModel(
         id=assessment_id,
+        owner_id=user.id,
         name=name,
         total_devices=len(files),
         created_at=datetime.utcnow()
@@ -183,15 +185,15 @@ async def upload_and_assess(
     return saved_assessment
 
 @router.get("", response_model=List[AssessmentSummaryResponse])
-async def list_assessments(db: AsyncSession = Depends(get_db)):
+async def list_assessments(db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
     """
     Returns summary list of all historical audit jobs.
     """
-    result = await db.execute(select(AssessmentModel).order_by(desc(AssessmentModel.created_at)))
+    result = await db.execute(select(AssessmentModel).where(AssessmentModel.owner_id == user.id).order_by(desc(AssessmentModel.created_at)))
     return result.scalars().all()
 
 @router.get("/{assessment_id}", response_model=AssessmentDetailResponse)
-async def get_assessment_details(assessment_id: str, db: AsyncSession = Depends(get_db)):
+async def get_assessment_details(assessment_id: str, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
     """
     Fetches full assessment details including devices, findings, and AI threat insights.
     """
@@ -202,7 +204,7 @@ async def get_assessment_details(assessment_id: str, db: AsyncSession = Depends(
             selectinload(AssessmentModel.findings),
             selectinload(AssessmentModel.category_scores)
         )
-        .where(AssessmentModel.id == assessment_id)
+        .where(AssessmentModel.id == assessment_id, AssessmentModel.owner_id == user.id)
     )
     assessment = result.scalar_one_or_none()
     if not assessment:
@@ -210,11 +212,11 @@ async def get_assessment_details(assessment_id: str, db: AsyncSession = Depends(
     return assessment
 
 @router.delete("/{assessment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_assessment(assessment_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_assessment(assessment_id: str, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
     """
     Deletes an assessment and all associated device findings.
     """
-    result = await db.execute(select(AssessmentModel).where(AssessmentModel.id == assessment_id))
+    result = await db.execute(select(AssessmentModel).where(AssessmentModel.id == assessment_id, AssessmentModel.owner_id == user.id))
     assessment = result.scalar_one_or_none()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")

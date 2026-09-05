@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, AlertOctagon, AlertTriangle, AlertCircle, Info, ChevronRight } from 'lucide-react';
 import { Assessment, Finding, SeverityLevel } from '../types';
-import { MOCK_ASSESSMENT } from '../services/mockData';
+import { apiClient } from '../services/api';
 import { FindingDrawer } from '../components/FindingDrawer';
 
 const SEVERITY_ORDER: SeverityLevel[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
@@ -15,12 +15,13 @@ const severityStyle: Record<SeverityLevel, { icon: React.ReactNode; badge: strin
 };
 
 export const FindingsPage: React.FC = () => {
-  const [assessment] = useState<Assessment>(MOCK_ASSESSMENT);
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [query, setQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<SeverityLevel | 'ALL'>('ALL');
   const [selected, setSelected] = useState<Finding | null>(null);
 
-  const findings = assessment.findings || [];
+  useEffect(() => { apiClient.listAssessments().then(items => items[0] && apiClient.getAssessment(items[0].id).then(setAssessment)).catch(() => undefined); }, []);
+  const findings = assessment?.findings || [];
 
   const filtered = useMemo(() => {
     return findings

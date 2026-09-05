@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Server, ShieldAlert, ChevronRight, UploadCloud } from 'lucide-react';
 import { Assessment } from '../types';
-import { MOCK_ASSESSMENT } from '../services/mockData';
+import { apiClient } from '../services/api';
 
 export const DevicesPage: React.FC = () => {
-  const [assessment] = useState<Assessment>(MOCK_ASSESSMENT);
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
   const navigate = useNavigate();
 
-  const devices = assessment.devices || [];
+  const devices = assessment?.devices || [];
+
+  useEffect(() => { apiClient.listAssessments().then(items => items[0] && apiClient.getAssessment(items[0].id).then(setAssessment)).catch(() => undefined); }, []);
 
   const scoreColor = (score: number) =>
     score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-cyan-400' : score >= 40 ? 'text-amber-400' : 'text-rose-400';

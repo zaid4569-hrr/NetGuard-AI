@@ -7,7 +7,8 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.models.db_models import AssessmentModel, FindingModel, DeviceModel
+from app.models.db_models import AssessmentModel, FindingModel, DeviceModel, UserModel
+from app.security.auth import require_user
 from app.ai.llm_provider import LocalLLMProvider
 
 router = APIRouter(prefix="/copilot", tags=["AI Copilot"])
@@ -42,7 +43,7 @@ class ExplainFindingResponse(BaseModel):
     remediation_command: Optional[str] = None
 
 @router.post("/query", response_model=CopilotQueryResponse)
-async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get_db)):
+async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
     """
     AI Security Copilot query grounded in actual audit results and threat chains.
     """
@@ -52,7 +53,7 @@ async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get
         res = await db.execute(
             select(AssessmentModel)
             .options(selectinload(AssessmentModel.devices), selectinload(AssessmentModel.findings))
-            .where(AssessmentModel.id == req.assessment_id)
+            .where(AssessmentModel.id == req.assessment_id, AssessmentModel.owner_id == user.id)
         )
         assessment = res.scalar_one_or_none()
 
@@ -60,7 +61,7 @@ async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get
         res = await db.execute(
             select(AssessmentModel)
             .options(selectinload(AssessmentModel.devices), selectinload(AssessmentModel.findings))
-            .order_by(desc(AssessmentModel.created_at))
+            .where(AssessmentModel.owner_id == user.id).order_by(desc(AssessmentModel.created_at))
             .limit(1)
         )
         assessment = res.scalar_one_or_none()
@@ -166,13 +167,13 @@ async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get
     )
 
 @router.post("/explain-finding", response_model=ExplainFindingResponse)
-async def explain_finding(req: ExplainFindingRequest, db: AsyncSession = Depends(get_db)):
+async def explain_finding(req: ExplainFindingRequest, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
     """
     Returns structured, professional explanation for a security finding.
     """
     finding = None
     if req.finding_id:
-        res = await db.execute(select(FindingModel).where(FindingModel.id == req.finding_id))
+        res = await db.execute(select(FindingModel).join(AssessmentModel).where(FindingModel.id == req.finding_id, AssessmentModel.owner_id == user.id))
         finding = res.scalar_one_or_none()
 
     rule_id = finding.rule_id if finding else (req.rule_id or "NET-SEC-001")

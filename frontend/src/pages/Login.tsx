@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Eye, EyeOff, Lock, Mail, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Shield, Eye, EyeOff, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Login: React.FC = () => {
@@ -11,7 +11,7 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { login, loginAsDemoUser } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,13 +30,6 @@ export const Login: React.FC = () => {
     } else {
       setErrorMsg(res.error || 'Invalid credentials or connection failure.');
     }
-  };
-
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    await loginAsDemoUser();
-    setLoading(false);
-    navigate('/dashboard', { replace: true });
   };
 
   return (
@@ -152,21 +145,6 @@ export const Login: React.FC = () => {
             </button>
 
           </form>
-
-          {/* Quick Demo Access (For Evaluation & Hackathons) */}
-          <div className="mt-6 pt-5 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              className="w-full py-2.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-semibold transition-all flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Explore Demo Account (Instant Access)</span>
-            </button>
-            <p className="text-[10px] text-center text-slate-500 mt-2">
-              Pre-loaded with 4 audited multi-vendor configurations & attack chains.
-            </p>
-          </div>
 
         </div>
 
