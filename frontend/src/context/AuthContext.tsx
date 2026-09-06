@@ -4,7 +4,7 @@ import axios from 'axios';
 export interface UserProfile { id: string; email: string; fullName: string; organizationName: string; onboardingCompleted: boolean; preferredVendors: string[]; securityPriorities: string[]; avatarUrl?: string; activeWorkspaceId?: string; }
 export interface Workspace { id: string; name: string; role: 'owner' | 'admin' | 'analyst' | 'auditor'; }
 interface AuthContextType {
-  user: UserProfile | null; workspaces: Workspace[]; activeWorkspace: Workspace | null; isAuthenticated: boolean; isLoading: boolean; isSupabaseConnected: boolean;
+  user: UserProfile | null; workspaces: Workspace[]; activeWorkspace: Workspace | null; isAuthenticated: boolean; isLoading: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<{success:boolean; error?:string}>;
   signup: (name: string, email: string, password: string) => Promise<{success:boolean; error?:string}>;
   logout: () => Promise<void>; resetPassword: (email:string) => Promise<{success:boolean; error?:string}>;
@@ -31,6 +31,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
   const completeOnboarding = async (data: {organizationName:string; preferredVendors:string[]; securityPriorities:string[]}) => { if(user) setUser({...user,...data,onboardingCompleted:true}); };
   const switchWorkspace = () => undefined;
   const loginAsDemoUser = async () => { throw new Error('Demo access is disabled. Create an account and upload a configuration to begin.'); };
-  return <AuthContext.Provider value={{user,workspaces,activeWorkspace:workspaces[0] || null,isAuthenticated:!!user,isLoading,isSupabaseConnected:false,login,signup,logout,resetPassword:unavailable,updateProfile,completeOnboarding,switchWorkspace,loginAsDemoUser}}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{user,workspaces,activeWorkspace:workspaces[0] || null,isAuthenticated:!!user,isLoading,login,signup,logout,resetPassword:unavailable,updateProfile,completeOnboarding,switchWorkspace,loginAsDemoUser}}>{children}</AuthContext.Provider>;
 };
 export const useAuth = () => { const value = useContext(AuthContext); if(!value) throw new Error('useAuth must be used within an AuthProvider'); return value; };

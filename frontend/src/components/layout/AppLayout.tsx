@@ -21,7 +21,7 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#06090F] text-slate-100 flex flex-col font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="app-shell min-h-screen bg-[#06090F] text-slate-100 flex flex-col font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
       
       <div className="flex flex-1 min-h-screen relative overflow-hidden">
         

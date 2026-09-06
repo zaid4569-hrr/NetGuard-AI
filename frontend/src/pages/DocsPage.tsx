@@ -91,13 +91,13 @@ export const DocsPage: React.FC = () => {
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-white">Authentication & Workspaces</h2>
               <p>
-                NetGuard AI supports enterprise multi-tenancy using <b>Supabase Auth</b> and <b>Row-Level Security (RLS)</b>.
+                NetGuard AI uses local SQLite storage with account-owned audit records, encrypted profiles, and server-side session validation.
                 Workspaces isolate device inventories, historical audits, and generated compliance reports.
               </p>
               <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2 font-mono text-[11px]">
-                <p className="text-emerald-400"># Production Supabase Configuration (.env)</p>
-                <p>VITE_SUPABASE_URL="https://your-project.supabase.co"</p>
-                <p>VITE_SUPABASE_ANON_KEY="your-anon-public-key"</p>
+                <p className="text-emerald-400"># Local database configuration (.env)</p>
+                <p>DATABASE_URL="sqlite+aiosqlite:///./data/netguard.db"</p>
+                <p># Profiles are encrypted locally; passwords are never stored in plaintext.</p>
               </div>
               <p className="text-slate-400">
                 When operating offline or in air-gapped lab environments, NetGuard AI automatically falls back to an in-memory session manager with instant demo login.

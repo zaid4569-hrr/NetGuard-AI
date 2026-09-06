@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Lock, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../services/supabase';
 
 export const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -26,21 +25,7 @@ export const ResetPassword: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-    try {
-      if (isSupabaseConfigured) {
-        const { error } = await supabase.auth.updateUser({ password });
-        if (error) throw error;
-      }
-      setLoading(false);
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/login');
-      }, 2500);
-    } catch (err: any) {
-      setLoading(false);
-      setErrorMsg(err.message || 'Failed to update password.');
-    }
+    setErrorMsg('Password reset requires a local administrator because NetGuard does not send account data to a cloud identity provider.');
   };
 
   return (
