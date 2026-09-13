@@ -1,0 +1,14 @@
+name: Keep Render backend warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check Render backend
+        run: curl --fail --silent --show-error --max-time 60 https://netguard-ai-1qun.onrender.com/health
