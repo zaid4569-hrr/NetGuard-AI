@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Shield, Lock, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { confirmPasswordReset } from 'firebase/auth';
+import { firebaseAuth, isFirebaseConfigured } from '../services/firebase';
 
 export const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -10,6 +12,11 @@ export const ResetPassword: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const navigate = useNavigate();
+  // Firebase's password reset email links back here with ?oobCode=...
+  // (configure this redirect in Firebase Console > Authentication >
+  // Templates > Password reset > Action URL).
+  const [searchParams] = useSearchParams();
+  const oobCode = searchParams.get('oobCode');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +32,23 @@ export const ResetPassword: React.FC = () => {
       return;
     }
 
-    setErrorMsg('Password reset requires a local administrator because NetGuard does not send account data to a cloud identity provider.');
+    setLoading(true);
+    try {
+      if (isFirebaseConfigured) {
+        if (!oobCode) {
+          throw new Error('This reset link is invalid or has expired. Please request a new one.');
+        }
+        await confirmPasswordReset(firebaseAuth, oobCode, password);
+      }
+      setLoading(false);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate('/login');
+      }, 2500);
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err.message || 'Failed to update password.');
+    }
   };
 
   return (

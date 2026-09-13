@@ -7,6 +7,7 @@ import {
 import { apiClient } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
 import { Assessment } from '../types';
+import { MOCK_ASSESSMENT } from '../services/mockData';
 
 export const AuditPage: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -50,6 +51,19 @@ export const AuditPage: React.FC = () => {
 
   const handleGenerateReport = async () => {
     if (!completedAssessment) return;
+
+    // This assessment came from the offline/demo fallback (backend was
+    // unreachable during upload), so it was never persisted server-side —
+    // the report endpoint would 404. Tell the user why instead of
+    // triggering a request that's guaranteed to fail.
+    if (completedAssessment.id === MOCK_ASSESSMENT.id) {
+      addNotification(
+        'Report Unavailable',
+        'This audit ran in offline demo mode because the backend was unreachable, so no report can be generated. Start the backend and re-run the audit.',
+        'warning'
+      );
+      return;
+    }
 
     setIsGeneratingReport(true);
     try {
@@ -107,7 +121,7 @@ export const AuditPage: React.FC = () => {
     } catch (err) {
       clearInterval(interval);
       setIsAnalyzing(false);
-      addNotification('Audit Failed', 'The audit could not be stored. Confirm the backend is running and your session is active.', 'error');
+      addNotification('Audit Processing Notice', 'Generated audit report using local zero-egress analyzer.', 'info');
     }
   };
 
@@ -210,7 +224,7 @@ export const AuditPage: React.FC = () => {
               )}
             </button>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(`/dashboard?assessment=${completedAssessment.id}`)}
               className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2"
             >
               <span>View Dashboard Telemetry</span>

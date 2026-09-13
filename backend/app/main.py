@@ -20,11 +20,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for local-first frontend dashboard
+# Enable CORS for the local-first frontend dashboard only.
+# Using an explicit allow-list (not "*") since we send credentials
+# (the Authorization bearer token) with requests.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=False,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

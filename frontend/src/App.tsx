@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { GitCompare, Wrench, CheckSquare, FileText, Network, Sparkles, TrendingUp } from 'lucide-react';
+import { Network } from 'lucide-react';
 
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -30,9 +30,13 @@ import { DevicesPage } from './pages/DevicesPage';
 import { DeviceDetailRoute } from './pages/DeviceDetailRoute';
 import { FindingsPage } from './pages/FindingsPage';
 import { RuleCatalog } from './pages/RuleCatalog';
-import { SettingsPage } from './pages/SettingsPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { ConfigAdvisorPage } from './pages/ConfigAdvisorPage';
+import { ComparePage } from './pages/ComparePage';
+import { RemediationCenter } from './pages/RemediationCenter';
+import { ComplianceCenter } from './pages/ComplianceCenter';
+import { SecurityTrends } from './pages/SecurityTrends';
+import { AICopilot } from './pages/AICopilot';
+import { SettingsPage } from './pages/SettingsPage';
 import { ComingSoon } from './pages/ComingSoon';
 
 const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -85,32 +89,9 @@ export const App: React.FC = () => {
             <Route path="/devices" element={<DevicesPage />} />
             <Route path="/devices/:id" element={<DeviceDetailRoute />} />
             <Route path="/findings" element={<FindingsPage />} />
-            <Route
-              path="/compare"
-              element={
-                <ComingSoon
-                  icon={GitCompare}
-                  title="Configuration Comparison"
-                  description="Compare two configurations side-by-side and see how your security score changes before and after remediation."
-                />
-              }
-            />
-            <Route
-              path="/remediation"
-              element={
-                <ConfigAdvisorPage />
-              }
-            />
-            <Route
-              path="/ai-copilot"
-              element={
-                <ComingSoon
-                  icon={Sparkles}
-                  title="AI Security Copilot"
-                  description="Ask natural-language questions about your audit findings once an AI provider is configured."
-                />
-              }
-            />
+            <Route path="/compare" element={<ComparePage />} />
+            <Route path="/remediation" element={<RemediationCenter />} />
+            <Route path="/ai-copilot" element={<AICopilot />} />
             <Route
               path="/network-map"
               element={
@@ -121,26 +102,8 @@ export const App: React.FC = () => {
                 />
               }
             />
-            <Route
-              path="/security-trends"
-              element={
-                <ComingSoon
-                  icon={TrendingUp}
-                  title="Security Trends"
-                  description="Track your security posture across audits over time."
-                />
-              }
-            />
-            <Route
-              path="/compliance"
-              element={
-                <ComingSoon
-                  icon={CheckSquare}
-                  title="Compliance Center"
-                  description="CIS, NIST, ISO 27001, PCI DSS, and SOC 2 control mappings will appear here as they're implemented."
-                />
-              }
-            />
+            <Route path="/security-trends" element={<SecurityTrends />} />
+            <Route path="/compliance" element={<ComplianceCenter />} />
             <Route path="/rules" element={<RuleCatalog />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />

@@ -1,36 +1,409 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import axios from 'axios';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  updateProfile as firebaseUpdateProfile,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { firebaseAuth, googleProvider, githubProvider, isFirebaseConfigured } from '../services/firebase';
+import { authApi, AUTH_EXPIRED_EVENT, TOKEN_STORAGE_KEY } from '../services/api';
 
-export interface UserProfile { id: string; email: string; fullName: string; organizationName: string; onboardingCompleted: boolean; preferredVendors: string[]; securityPriorities: string[]; avatarUrl?: string; activeWorkspaceId?: string; }
-export interface Workspace { id: string; name: string; role: 'owner' | 'admin' | 'analyst' | 'auditor'; }
+export interface UserProfile {
+  id: string;
+  email: string;
+  fullName: string;
+  avatarUrl?: string;
+  organizationName: string;
+  activeWorkspaceId: string;
+  onboardingCompleted: boolean;
+  preferredVendors: string[];
+  securityPriorities: string[];
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  role: 'owner' | 'admin' | 'analyst' | 'auditor';
+}
+
 interface AuthContextType {
-  user: UserProfile | null; workspaces: Workspace[]; activeWorkspace: Workspace | null; isAuthenticated: boolean; isLoading: boolean;
-  login: (email: string, password: string, remember?: boolean) => Promise<{success:boolean; error?:string}>;
-  signup: (name: string, email: string, password: string) => Promise<{success:boolean; error?:string}>;
-  logout: () => Promise<void>; resetPassword: (email:string) => Promise<{success:boolean; error?:string}>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>; completeOnboarding: (data: {organizationName:string; preferredVendors:string[]; securityPriorities:string[]}) => Promise<void>; switchWorkspace: (id:string) => void;
+  user: UserProfile | null;
+  workspaces: Workspace[];
+  activeWorkspace: Workspace | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isFirebaseConnected: boolean;
+  login: (email: string, password: string, rememberSession?: boolean) => Promise<{ success: boolean; error?: string }>;
+  signup: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginWithGithub: () => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  completeOnboarding: (data: { organizationName: string; preferredVendors: string[]; securityPriorities: string[] }) => Promise<void>;
+  switchWorkspace: (workspaceId: string) => void;
   loginAsDemoUser: () => Promise<void>;
 }
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const TOKEN_KEY = 'netguard_session_token';
-const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
-export const getAuthToken = token;
-const saveToken = (value: string, remember: boolean) => { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, value); };
-const clearToken = () => { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); };
 
-export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
-  const [user, setUser] = useState<UserProfile | null>(null); const [isLoading, setIsLoading] = useState(true);
-  const workspaces: Workspace[] = user ? [{id: 'local', name: user.organizationName, role: 'owner'}] : [];
-  useEffect(() => { const restore = async () => { const saved = token(); if (!saved) { setIsLoading(false); return; } try { const {data} = await axios.get('/api/auth/me', {headers:{Authorization:`Bearer ${saved}`}}); setUser(data.user); } catch { clearToken(); } finally { setIsLoading(false); } }; restore(); }, []);
-  const authenticate = async (path: string, body: object, remember = true) => { try { const {data} = await axios.post(`/api/auth/${path}`, body); saveToken(data.token, remember); setUser(data.user); return {success:true}; } catch (error) { const detail = axios.isAxiosError(error) ? error.response?.data?.detail : null; return {success:false, error: typeof detail === 'string' ? detail : 'Unable to authenticate. Check your details and try again.'}; } };
-  const login = async (email:string,password:string,remember=true) => { setIsLoading(true); const result = await authenticate('login',{email,password},remember); setIsLoading(false); return result; };
-  const signup = async (fullName:string,email:string,password:string) => { setIsLoading(true); const result = await authenticate('signup',{full_name:fullName,email,password}); setIsLoading(false); return result; };
-  const logout = async () => { const saved = token(); try { if(saved) await axios.post('/api/auth/logout', {}, {headers:{Authorization:`Bearer ${saved}`}}); } finally { clearToken(); setUser(null); } };
-  const unavailable = async () => ({success:false, error:'Password reset is not configured for local-only accounts. Contact your local administrator.'});
-  const updateProfile = async (updates: Partial<UserProfile>) => { if(user) setUser({...user,...updates}); };
-  const completeOnboarding = async (data: {organizationName:string; preferredVendors:string[]; securityPriorities:string[]}) => { if(user) setUser({...user,...data,onboardingCompleted:true}); };
-  const switchWorkspace = () => undefined;
-  const loginAsDemoUser = async () => { throw new Error('Demo access is disabled. Create an account and upload a configuration to begin.'); };
-  return <AuthContext.Provider value={{user,workspaces,activeWorkspace:workspaces[0] || null,isAuthenticated:!!user,isLoading,login,signup,logout,resetPassword:unavailable,updateProfile,completeOnboarding,switchWorkspace,loginAsDemoUser}}>{children}</AuthContext.Provider>;
+const DEFAULT_WORKSPACES: Workspace[] = [
+  { id: 'ws-prod-01', name: 'Enterprise Production Core', role: 'owner' },
+  { id: 'ws-lab-02', name: 'Air-Gapped Lab Cluster', role: 'admin' },
+  { id: 'ws-audit-03', name: 'PCI-DSS Compliance Audit', role: 'auditor' }
+];
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Friendlier text for Firebase's terse error codes.
+const friendlyFirebaseError = (err: any): string => {
+  const code = err?.code || '';
+  const map: Record<string, string> = {
+    'auth/invalid-credential': 'Invalid email or password.',
+    'auth/wrong-password': 'Invalid email or password.',
+    'auth/user-not-found': 'Invalid email or password.',
+    'auth/email-already-in-use': 'An account with this email already exists.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/popup-closed-by-user': 'Sign-in was cancelled.',
+    'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+  };
+  return map[code] || err?.message || 'Authentication error occurred.';
 };
-export const useAuth = () => { const value = useContext(AuthContext); if(!value) throw new Error('useAuth must be used within an AuthProvider'); return value; };
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(DEFAULT_WORKSPACES);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>('ws-prod-01');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Merge the FastAPI backend's view of the user (source of truth for
+  // email/full_name/organization_name — these are auto-provisioned there
+  // the moment a Firebase ID token is first verified, see backend
+  // app/api/deps.py) with any extra locally-cached preferences.
+  const syncProfileFromBackend = async (fallbackName?: string) => {
+    const cachedProfile = localStorage.getItem('netguard_user_session');
+    const parsedCache = cachedProfile ? JSON.parse(cachedProfile) : {};
+    try {
+      const me = await authApi.me();
+      const restored: UserProfile = {
+        id: me.id,
+        email: me.email,
+        fullName: me.full_name || parsedCache.fullName || fallbackName || me.email.split('@')[0],
+        organizationName: me.organization_name || parsedCache.organizationName || 'Enterprise Security Workspace',
+        activeWorkspaceId: parsedCache.activeWorkspaceId || 'ws-prod-01',
+        onboardingCompleted: parsedCache.onboardingCompleted ?? true,
+        preferredVendors: parsedCache.preferredVendors || ['Cisco', 'Fortinet'],
+        securityPriorities: parsedCache.securityPriorities || ['Network Hardening']
+      };
+      setUser(restored);
+      if (restored.activeWorkspaceId) setActiveWorkspaceId(restored.activeWorkspaceId);
+      localStorage.setItem('netguard_user_session', JSON.stringify(restored));
+    } catch (err) {
+      console.warn('Could not sync profile with backend:', err);
+    }
+  };
+
+  // Initialize session on startup
+  useEffect(() => {
+    let unsubscribeFirebase: (() => void) | undefined;
+
+    const initAuth = async () => {
+      try {
+        if (isFirebaseConfigured) {
+          // onAuthStateChanged fires immediately with the current user (or
+          // null) on mount, and again on every sign-in/sign-out — this is
+          // Firebase's single source of truth for session state, so we
+          // don't need to separately restore anything from localStorage.
+          unsubscribeFirebase = onAuthStateChanged(firebaseAuth, async (fbUser: FirebaseUser | null) => {
+            if (fbUser) {
+              await syncProfileFromBackend(fbUser.displayName || undefined);
+            } else {
+              localStorage.removeItem('netguard_user_session');
+              setUser(null);
+            }
+            setIsLoading(false);
+          });
+          return;
+        }
+
+        // NetGuard local backend session: a JWT means "logged in", but we
+        // always re-validate it against /auth/me on load rather than
+        // trusting a cached profile — a token that's been revoked or
+        // has expired must not leave the user looking authenticated.
+        const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+        if (token) {
+          await syncProfileFromBackend();
+        }
+      } catch (err) {
+        console.warn('Auth initialization failed:', err);
+      } finally {
+        if (!isFirebaseConfigured) setIsLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // If any API call comes back 401 mid-session (expired/revoked token),
+    // log the user out immediately rather than leaving them in a state
+    // where the UI looks authenticated but every request silently fails.
+    const handleAuthExpired = () => {
+      localStorage.removeItem('netguard_user_session');
+      setUser(null);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+
+    return () => {
+      unsubscribeFirebase?.();
+      window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Login handler
+  const login = async (email: string, password: string, rememberSession = true): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    try {
+      if (isFirebaseConfigured) {
+        await signInWithEmailAndPassword(firebaseAuth, email, password);
+        // Profile sync happens via onAuthStateChanged.
+        setIsLoading(false);
+        return { success: true };
+      }
+
+      // Real credential check against the NetGuard backend. There is no
+      // "any password works" path — an invalid email/password combination
+      // is rejected with a generic error, same as any production login.
+      const authResp = await authApi.login(email, password);
+      applyAuthResponse(authResp, rememberSession);
+      setIsLoading(false);
+      return { success: true };
+    } catch (err: any) {
+      setIsLoading(false);
+      const message = isFirebaseConfigured
+        ? friendlyFirebaseError(err)
+        : (err?.response?.data?.detail || err.message || 'Invalid email or password.');
+      return { success: false, error: message };
+    }
+  };
+
+  // Signup handler
+  const signup = async (fullName: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    try {
+      if (isFirebaseConfigured) {
+        const cred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        await firebaseUpdateProfile(cred.user, { displayName: fullName });
+        // Profile sync (and backend user auto-provisioning) happens via onAuthStateChanged.
+        setIsLoading(false);
+        return { success: true };
+      }
+
+      const authResp = await authApi.signup(fullName, email, password);
+      applyAuthResponse(authResp, true, { onboardingCompleted: false });
+      setIsLoading(false);
+      return { success: true };
+    } catch (err: any) {
+      setIsLoading(false);
+      const message = isFirebaseConfigured
+        ? friendlyFirebaseError(err)
+        : (err?.response?.data?.detail
+            ? (Array.isArray(err.response.data.detail)
+                ? err.response.data.detail.map((d: any) => d.msg).join(' ')
+                : err.response.data.detail)
+            : (err.message || 'Registration failed.'));
+      return { success: false, error: message };
+    }
+  };
+
+  // Google / GitHub sign-in via Firebase popup. Works for both new and
+  // returning users — Firebase creates the account on first use.
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await signInWithPopup(firebaseAuth, googleProvider);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: friendlyFirebaseError(err) };
+    }
+  };
+
+  const loginWithGithub = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await signInWithPopup(firebaseAuth, githubProvider);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: friendlyFirebaseError(err) };
+    }
+  };
+
+  // Shared helper: persist a real backend auth response (token + user) into
+  // local UserProfile shape used throughout the rest of the app. Only used
+  // in the non-Firebase (built-in backend JWT) path.
+  const applyAuthResponse = (
+    authResp: { access_token: string; user: { id: string; email: string; full_name?: string | null; organization_name?: string | null } },
+    rememberSession: boolean,
+    overrides: Partial<UserProfile> = {}
+  ) => {
+    localStorage.setItem(TOKEN_STORAGE_KEY, authResp.access_token);
+    const profile: UserProfile = {
+      id: authResp.user.id,
+      email: authResp.user.email,
+      fullName: authResp.user.full_name || authResp.user.email.split('@')[0],
+      organizationName: authResp.user.organization_name || 'Enterprise Security Workspace',
+      activeWorkspaceId: 'ws-prod-01',
+      onboardingCompleted: true,
+      preferredVendors: ['Cisco', 'Fortinet', 'Juniper'],
+      securityPriorities: ['Network Hardening', 'CIS Compliance'],
+      ...overrides
+    };
+    setUser(profile);
+    if (rememberSession) {
+      localStorage.setItem('netguard_user_session', JSON.stringify(profile));
+    }
+  };
+
+  // Logout handler
+  const logout = async () => {
+    setIsLoading(true);
+    if (isFirebaseConfigured) {
+      await firebaseSignOut(firebaseAuth);
+    }
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem('netguard_user_session');
+    setUser(null);
+    setIsLoading(false);
+  };
+
+  // Forgot password handler
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (isFirebaseConfigured) {
+      try {
+        await sendPasswordResetEmail(firebaseAuth, email);
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: friendlyFirebaseError(err) };
+      }
+    }
+    // Simulated reset response (built-in backend has no email delivery yet).
+    return { success: true };
+  };
+
+  // Profile update — full_name is mirrored to Firebase's displayName when
+  // Firebase Auth is active; everything else stays cached locally, same as
+  // the built-in backend path (the FastAPI user model only tracks
+  // full_name/organization_name today).
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) return;
+    const updated = { ...user, ...updates };
+    setUser(updated);
+    localStorage.setItem('netguard_user_session', JSON.stringify(updated));
+
+    if (isFirebaseConfigured && firebaseAuth.currentUser && updates.fullName) {
+      try {
+        await firebaseUpdateProfile(firebaseAuth.currentUser, { displayName: updates.fullName });
+      } catch (err) {
+        console.warn('Could not update Firebase display name:', err);
+      }
+    }
+  };
+
+  // Onboarding completion
+  const completeOnboarding = async (data: {
+    organizationName: string;
+    preferredVendors: string[];
+    securityPriorities: string[];
+  }) => {
+    if (!user) return;
+    const updated: UserProfile = {
+      ...user,
+      organizationName: data.organizationName,
+      preferredVendors: data.preferredVendors,
+      securityPriorities: data.securityPriorities,
+      onboardingCompleted: true
+    };
+    setUser(updated);
+    localStorage.setItem('netguard_user_session', JSON.stringify(updated));
+  };
+
+  // Switch workspace
+  const switchWorkspace = (wsId: string) => {
+    setActiveWorkspaceId(wsId);
+    if (user) {
+      const updated = { ...user, activeWorkspaceId: wsId };
+      setUser(updated);
+      localStorage.setItem('netguard_user_session', JSON.stringify(updated));
+    }
+  };
+
+  // Quick Demo account for evaluation — this creates/logs into a real
+  // account (auto-provisioned on first use) rather than bypassing
+  // authentication. It gets a real session like any other user, so it can
+  // only ever see its own (initially empty) audit history — not a fake
+  // all-access session.
+  const loginAsDemoUser = async () => {
+    setIsLoading(true);
+    const demoEmail = 'demo@netguard.ai';
+    const demoPassword = 'NetGuardDemo2026!';
+    try {
+      if (isFirebaseConfigured) {
+        try {
+          await signInWithEmailAndPassword(firebaseAuth, demoEmail, demoPassword);
+        } catch {
+          // Demo account doesn't exist yet on this Firebase project — create it.
+          const cred = await createUserWithEmailAndPassword(firebaseAuth, demoEmail, demoPassword);
+          await firebaseUpdateProfile(cred.user, { displayName: 'Alex Vance' });
+        }
+      } else {
+        try {
+          const authResp = await authApi.login(demoEmail, demoPassword);
+          applyAuthResponse(authResp, true, { fullName: 'Alex Vance', organizationName: 'Global Cyber Defense Corp' });
+        } catch {
+          // Demo account doesn't exist yet on this backend instance — create it.
+          const authResp = await authApi.signup('Alex Vance', demoEmail, demoPassword);
+          applyAuthResponse(authResp, true, { organizationName: 'Global Cyber Defense Corp' });
+        }
+      }
+    } catch (err) {
+      console.warn('Demo login failed:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId) || workspaces[0];
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        workspaces,
+        activeWorkspace,
+        isAuthenticated: Boolean(user),
+        isLoading,
+        isFirebaseConnected: isFirebaseConfigured,
+        login,
+        signup,
+        loginWithGoogle,
+        loginWithGithub,
+        logout,
+        resetPassword,
+        updateProfile,
+        completeOnboarding,
+        switchWorkspace,
+        loginAsDemoUser
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

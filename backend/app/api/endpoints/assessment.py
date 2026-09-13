@@ -9,13 +9,13 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.scoring import ScoringEngine
 from app.models.db_models import AssessmentModel, DeviceModel, FindingModel, CategoryScoreModel, UserModel
-from app.security.auth import require_user
 from app.schemas.api_schemas import AssessmentDetailResponse, AssessmentSummaryResponse
 from app.security.validator import FileSecurityValidator
 from app.security.sanitizer import SecuritySanitizer
 from app.parsers.registry import ParserRegistry
 from app.compliance.engine import ComplianceEngine, RuleFindingResult
 from app.ai.summarizer import AISummarizer
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/assessment", tags=["Assessments"])
 
@@ -24,7 +24,8 @@ async def upload_and_assess(
     files: List[UploadFile] = File(...),
     assessment_name: Optional[str] = Form(None),
     manual_vendor: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
 ):
     """
     Ingests one or multiple network configuration files.
@@ -39,7 +40,7 @@ async def upload_and_assess(
 
     assessment = AssessmentModel(
         id=assessment_id,
-        owner_id=user.id,
+        user_id=current_user.id,
         name=name,
         total_devices=len(files),
         created_at=datetime.utcnow()
@@ -185,17 +186,31 @@ async def upload_and_assess(
     return saved_assessment
 
 @router.get("", response_model=List[AssessmentSummaryResponse])
-async def list_assessments(db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
+async def list_assessments(
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
     """
-    Returns summary list of all historical audit jobs.
+    Returns summary list of the current user's historical audit jobs.
+    Only assessments owned by the authenticated user are returned.
     """
-    result = await db.execute(select(AssessmentModel).where(AssessmentModel.owner_id == user.id).order_by(desc(AssessmentModel.created_at)))
+    result = await db.execute(
+        select(AssessmentModel)
+        .where(AssessmentModel.user_id == current_user.id)
+        .order_by(desc(AssessmentModel.created_at))
+    )
     return result.scalars().all()
 
 @router.get("/{assessment_id}", response_model=AssessmentDetailResponse)
-async def get_assessment_details(assessment_id: str, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
+async def get_assessment_details(
+    assessment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
     """
     Fetches full assessment details including devices, findings, and AI threat insights.
+    Scoped to the authenticated user — another user's assessment ID returns 404,
+    not 403, so as not to reveal that the ID exists at all.
     """
     result = await db.execute(
         select(AssessmentModel)
@@ -204,7 +219,7 @@ async def get_assessment_details(assessment_id: str, db: AsyncSession = Depends(
             selectinload(AssessmentModel.findings),
             selectinload(AssessmentModel.category_scores)
         )
-        .where(AssessmentModel.id == assessment_id, AssessmentModel.owner_id == user.id)
+        .where(AssessmentModel.id == assessment_id, AssessmentModel.user_id == current_user.id)
     )
     assessment = result.scalar_one_or_none()
     if not assessment:
@@ -212,11 +227,19 @@ async def get_assessment_details(assessment_id: str, db: AsyncSession = Depends(
     return assessment
 
 @router.delete("/{assessment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_assessment(assessment_id: str, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
+async def delete_assessment(
+    assessment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
     """
     Deletes an assessment and all associated device findings.
+    Only the owning user may delete their own assessment.
     """
-    result = await db.execute(select(AssessmentModel).where(AssessmentModel.id == assessment_id, AssessmentModel.owner_id == user.id))
+    result = await db.execute(
+        select(AssessmentModel)
+        .where(AssessmentModel.id == assessment_id, AssessmentModel.user_id == current_user.id)
+    )
     assessment = result.scalar_one_or_none()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")

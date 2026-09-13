@@ -1,19 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Server, ShieldAlert, ChevronRight, UploadCloud } from 'lucide-react';
-import { Assessment } from '../types';
-import { apiClient } from '../services/api';
+import { Server, ShieldAlert, ChevronRight, UploadCloud, Loader2 } from 'lucide-react';
+import { useAssessment } from '../context/AssessmentContext';
 
 export const DevicesPage: React.FC = () => {
-  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const { assessment, loading, isDemoData } = useAssessment();
   const navigate = useNavigate();
 
   const devices = assessment?.devices || [];
 
-  useEffect(() => { apiClient.listAssessments().then(items => items[0] && apiClient.getAssessment(items[0].id).then(setAssessment)).catch(() => undefined); }, []);
-
   const scoreColor = (score: number) =>
     score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-cyan-400' : score >= 40 ? 'text-amber-400' : 'text-rose-400';
+
+  if (loading || !assessment) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+        <p className="text-xs font-mono">Loading device inventory...</p>
+      </div>
+    );
+  }
 
   if (devices.length === 0) {
     return (
@@ -35,7 +41,9 @@ export const DevicesPage: React.FC = () => {
     <div className="space-y-6 pb-16">
       <div>
         <h1 className="text-xl font-semibold text-slate-100">Device Inventory</h1>
-        <p className="text-sm text-slate-500 mt-1">All devices audited across your workspace.</p>
+        <p className="text-sm text-slate-500 mt-1">
+          {isDemoData ? 'Synthetic demo devices — run a real audit to see your own inventory.' : `Devices audited in "${assessment.name}".`}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

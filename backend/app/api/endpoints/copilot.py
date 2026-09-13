@@ -8,8 +8,8 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.db_models import AssessmentModel, FindingModel, DeviceModel, UserModel
-from app.security.auth import require_user
 from app.ai.llm_provider import LocalLLMProvider
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/copilot", tags=["AI Copilot"])
 
@@ -43,17 +43,22 @@ class ExplainFindingResponse(BaseModel):
     remediation_command: Optional[str] = None
 
 @router.post("/query", response_model=CopilotQueryResponse)
-async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
+async def query_copilot(
+    req: CopilotQueryRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
     """
     AI Security Copilot query grounded in actual audit results and threat chains.
+    Only ever grounded in assessments owned by the authenticated user.
     """
-    # Find targeted or latest assessment
+    # Find targeted or latest assessment (scoped to the current user)
     assessment = None
     if req.assessment_id:
         res = await db.execute(
             select(AssessmentModel)
             .options(selectinload(AssessmentModel.devices), selectinload(AssessmentModel.findings))
-            .where(AssessmentModel.id == req.assessment_id, AssessmentModel.owner_id == user.id)
+            .where(AssessmentModel.id == req.assessment_id, AssessmentModel.user_id == current_user.id)
         )
         assessment = res.scalar_one_or_none()
 
@@ -61,7 +66,8 @@ async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get
         res = await db.execute(
             select(AssessmentModel)
             .options(selectinload(AssessmentModel.devices), selectinload(AssessmentModel.findings))
-            .where(AssessmentModel.owner_id == user.id).order_by(desc(AssessmentModel.created_at))
+            .where(AssessmentModel.user_id == current_user.id)
+            .order_by(desc(AssessmentModel.created_at))
             .limit(1)
         )
         assessment = res.scalar_one_or_none()
@@ -167,13 +173,22 @@ async def query_copilot(req: CopilotQueryRequest, db: AsyncSession = Depends(get
     )
 
 @router.post("/explain-finding", response_model=ExplainFindingResponse)
-async def explain_finding(req: ExplainFindingRequest, db: AsyncSession = Depends(get_db), user: UserModel = Depends(require_user)):
+async def explain_finding(
+    req: ExplainFindingRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
     """
-    Returns structured, professional explanation for a security finding.
+    Returns structured, professional explanation for a security finding
+    belonging to the authenticated user.
     """
     finding = None
     if req.finding_id:
-        res = await db.execute(select(FindingModel).join(AssessmentModel).where(FindingModel.id == req.finding_id, AssessmentModel.owner_id == user.id))
+        res = await db.execute(
+            select(FindingModel)
+            .join(AssessmentModel, FindingModel.assessment_id == AssessmentModel.id)
+            .where(FindingModel.id == req.finding_id, AssessmentModel.user_id == current_user.id)
+        )
         finding = res.scalar_one_or_none()
 
     rule_id = finding.rule_id if finding else (req.rule_id or "NET-SEC-001")

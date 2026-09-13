@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Search, AlertOctagon, AlertTriangle, AlertCircle, Info, ChevronRight } from 'lucide-react';
-import { Assessment, Finding, SeverityLevel } from '../types';
-import { apiClient } from '../services/api';
+import React, { useMemo, useState } from 'react';
+import { Search, AlertOctagon, AlertTriangle, AlertCircle, Info, ChevronRight, Loader2 } from 'lucide-react';
+import { Finding, SeverityLevel } from '../types';
+import { useAssessment } from '../context/AssessmentContext';
 import { FindingDrawer } from '../components/FindingDrawer';
 
 const SEVERITY_ORDER: SeverityLevel[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
@@ -15,12 +15,11 @@ const severityStyle: Record<SeverityLevel, { icon: React.ReactNode; badge: strin
 };
 
 export const FindingsPage: React.FC = () => {
-  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const { assessment, loading, isDemoData } = useAssessment();
   const [query, setQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState<SeverityLevel | 'ALL'>('ALL');
   const [selected, setSelected] = useState<Finding | null>(null);
 
-  useEffect(() => { apiClient.listAssessments().then(items => items[0] && apiClient.getAssessment(items[0].id).then(setAssessment)).catch(() => undefined); }, []);
   const findings = assessment?.findings || [];
 
   const filtered = useMemo(() => {
@@ -30,11 +29,22 @@ export const FindingsPage: React.FC = () => {
       .sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
   }, [findings, severityFilter, query]);
 
+  if (loading || !assessment) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+        <p className="text-xs font-mono">Loading findings...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-16">
       <div>
         <h1 className="text-xl font-semibold text-slate-100">Findings</h1>
-        <p className="text-sm text-slate-500 mt-1">{findings.length} findings across your workspace.</p>
+        <p className="text-sm text-slate-500 mt-1">
+          {findings.length} findings across {isDemoData ? 'synthetic demo data' : `"${assessment.name}"`}.
+        </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">

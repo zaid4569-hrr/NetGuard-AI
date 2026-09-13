@@ -251,7 +251,3 @@ Category-level scores are similarly computed and normalized to reflect domain-sp
 
 ## 👥 Hackathon Team Contribution
 Developed with ❤️ for the **Smart India Hackathon** — *AI-Driven Multi-Vendor Network Security Compliance Auditor*.
-<<<<<<< HEAD
-
-=======
->>>>>>> 87de5c3 (Updated README after merge conflict resolution)

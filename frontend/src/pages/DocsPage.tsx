@@ -91,16 +91,19 @@ export const DocsPage: React.FC = () => {
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-white">Authentication & Workspaces</h2>
               <p>
-                NetGuard AI uses local SQLite storage with account-owned audit records, encrypted profiles, and server-side session validation.
+                NetGuard AI supports enterprise multi-tenancy using <b>Firebase Authentication</b>, including
+                Google and GitHub OAuth sign-in, with per-user data isolation enforced by the backend API.
                 Workspaces isolate device inventories, historical audits, and generated compliance reports.
               </p>
               <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2 font-mono text-[11px]">
-                <p className="text-emerald-400"># Local database configuration (.env)</p>
-                <p>DATABASE_URL="sqlite+aiosqlite:///./data/netguard.db"</p>
-                <p># Profiles are encrypted locally; passwords are never stored in plaintext.</p>
+                <p className="text-emerald-400"># Production Firebase Configuration (frontend/.env)</p>
+                <p>VITE_FIREBASE_API_KEY="your-api-key"</p>
+                <p>VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"</p>
+                <p>VITE_FIREBASE_PROJECT_ID="your-project-id"</p>
+                <p>VITE_FIREBASE_APP_ID="your-app-id"</p>
               </div>
               <p className="text-slate-400">
-                When operating offline or in air-gapped lab environments, NetGuard AI automatically falls back to an in-memory session manager with instant demo login.
+                When operating offline or in air-gapped lab environments, NetGuard AI automatically falls back to its built-in backend session manager with instant demo login.
               </p>
             </div>
           )}

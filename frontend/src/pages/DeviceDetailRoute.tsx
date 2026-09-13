@@ -1,13 +1,24 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { DeviceDetail } from './DeviceDetail';
-import { MOCK_ASSESSMENT } from '../services/mockData';
+import { useAssessment } from '../context/AssessmentContext';
 
 export const DeviceDetailRoute: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { assessment, loading } = useAssessment();
 
-  const device = MOCK_ASSESSMENT.devices?.find((d) => d.id === id);
+  if (loading || !assessment) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-slate-400 gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+        <p className="text-xs font-mono">Loading device...</p>
+      </div>
+    );
+  }
+
+  const device = assessment.devices?.find((d) => d.id === id);
 
   if (!device) {
     return (
@@ -23,7 +34,7 @@ export const DeviceDetailRoute: React.FC = () => {
   return (
     <DeviceDetail
       device={device}
-      findings={MOCK_ASSESSMENT.findings || []}
+      findings={assessment.findings || []}
       onBack={() => navigate('/devices')}
     />
   );

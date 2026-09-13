@@ -1,11 +1,13 @@
 import difflib
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from app.parsers.registry import ParserRegistry
 from app.compliance.engine import ComplianceEngine
 from app.core.scoring import ScoringEngine
+from app.api.deps import get_current_user
+from app.models.db_models import UserModel
 
 router = APIRouter(prefix="/compare", tags=["Configuration Comparison"])
 
@@ -33,7 +35,7 @@ class CompareResponse(BaseModel):
     diff_lines: List[DiffLine]
 
 @router.post("", response_model=CompareResponse)
-async def compare_configurations(req: CompareRequest):
+async def compare_configurations(req: CompareRequest, current_user: UserModel = Depends(get_current_user)):
     """
     Compares two network configuration baselines (e.g. before and after remediation).
     Calculates unified diff, before & after security scores, and resolved findings.

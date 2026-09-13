@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { TopHeader } from './TopHeader';
 import { CommandPalette } from '../CommandPalette';
+import { AssessmentProvider } from '../../context/AssessmentContext';
 
 export const AppLayout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -21,7 +22,8 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <div className="app-shell min-h-screen bg-[#06090F] text-slate-100 flex flex-col font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+    <AssessmentProvider>
+    <div className="min-h-screen bg-[#06090F] text-slate-100 flex flex-col font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
       
       <div className="flex flex-1 min-h-screen relative overflow-hidden">
         
@@ -79,5 +81,6 @@ export const AppLayout: React.FC = () => {
       />
 
     </div>
+    </AssessmentProvider>
   );
 };
