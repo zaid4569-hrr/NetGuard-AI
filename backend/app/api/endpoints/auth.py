@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from collections import defaultdict, deque
+from time import monotonic
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +13,31 @@ from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+_RATE_WINDOW_SECONDS = 15 * 60
+_MAX_ATTEMPTS_PER_WINDOW = 10
+_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _check_rate_limit(request: Request, email: str) -> None:
+    """Limit credential abuse per client and account without storing passwords."""
+    client_ip = request.client.host if request.client else "unknown"
+    now = monotonic()
+    keys = (f"ip:{client_ip}", f"email:{email}")
+
+    for key in keys:
+        timestamps = _attempts[key]
+        while timestamps and now - timestamps[0] >= _RATE_WINDOW_SECONDS:
+            timestamps.popleft()
+        if len(timestamps) >= _MAX_ATTEMPTS_PER_WINDOW:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many authentication attempts. Please try again later.",
+                headers={"Retry-After": str(_RATE_WINDOW_SECONDS)},
+            )
+
+    for key in keys:
+        _attempts[key].append(now)
+
 # Generic error message on purpose: never reveal whether the email exists.
 INVALID_CREDENTIALS = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -18,8 +46,9 @@ INVALID_CREDENTIALS = HTTPException(
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(payload: SignupRequest, db: AsyncSession = Depends(get_db)):
+async def signup(payload: SignupRequest, request: Request, db: AsyncSession = Depends(get_db)):
     normalized_email = payload.email.lower().strip()
+    _check_rate_limit(request, normalized_email)
 
     existing = await db.execute(select(UserModel).where(UserModel.email == normalized_email))
     if existing.scalar_one_or_none():
@@ -42,8 +71,9 @@ async def signup(payload: SignupRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     normalized_email = payload.email.lower().strip()
+    _check_rate_limit(request, normalized_email)
 
     result = await db.execute(select(UserModel).where(UserModel.email == normalized_email))
     user = result.scalar_one_or_none()
