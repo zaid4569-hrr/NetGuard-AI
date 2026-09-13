@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
 is_sqlite = "sqlite" in settings.async_database_url
-connect_args = {"check_same_thread": False} if is_sqlite else {}
+connect_args = {"check_same_thread": False} if is_sqlite else {"statement_cache_size": 0}
 
 engine = create_async_engine(
     settings.async_database_url,

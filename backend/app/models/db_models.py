@@ -8,7 +8,7 @@ def generate_uuid():
     return str(uuid.uuid4())
 
 class UserModel(Base):
-    __tablename__ = "users"
+    __tablename__ = "ng_users"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     email = Column(String(255), unique=True, nullable=False, index=True)
@@ -22,10 +22,10 @@ class UserModel(Base):
     assessments = relationship("AssessmentModel", back_populates="owner", cascade="all, delete-orphan")
 
 class AssessmentModel(Base):
-    __tablename__ = "assessments"
+    __tablename__ = "ng_assessments"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("ng_users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     total_devices = Column(Integer, default=0)
@@ -44,10 +44,10 @@ class AssessmentModel(Base):
     category_scores = relationship("CategoryScoreModel", back_populates="assessment", cascade="all, delete-orphan")
 
 class DeviceModel(Base):
-    __tablename__ = "devices"
+    __tablename__ = "ng_devices"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    assessment_id = Column(String(36), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False)
+    assessment_id = Column(String(36), ForeignKey("ng_assessments.id", ondelete="CASCADE"), nullable=False)
     filename = Column(String(255), nullable=False)
     hostname = Column(String(255), nullable=True)
     vendor = Column(String(50), nullable=False)
@@ -67,11 +67,11 @@ class DeviceModel(Base):
     category_scores = relationship("CategoryScoreModel", back_populates="device", cascade="all, delete-orphan")
 
 class CategoryScoreModel(Base):
-    __tablename__ = "category_scores"
+    __tablename__ = "ng_category_scores"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    assessment_id = Column(String(36), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=True)
-    device_id = Column(String(36), ForeignKey("devices.id", ondelete="CASCADE"), nullable=True)
+    assessment_id = Column(String(36), ForeignKey("ng_assessments.id", ondelete="CASCADE"), nullable=True)
+    device_id = Column(String(36), ForeignKey("ng_devices.id", ondelete="CASCADE"), nullable=True)
     category = Column(String(50), nullable=False)
     score = Column(Float, nullable=False)
     findings_count = Column(Integer, default=0)
@@ -80,11 +80,11 @@ class CategoryScoreModel(Base):
     device = relationship("DeviceModel", back_populates="category_scores")
 
 class FindingModel(Base):
-    __tablename__ = "findings"
+    __tablename__ = "ng_findings"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    assessment_id = Column(String(36), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False)
-    device_id = Column(String(36), ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    assessment_id = Column(String(36), ForeignKey("ng_assessments.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(String(36), ForeignKey("ng_devices.id", ondelete="CASCADE"), nullable=False)
     rule_id = Column(String(50), nullable=False)
     title = Column(String(255), nullable=False)
     category = Column(String(50), nullable=False)
@@ -104,7 +104,7 @@ class FindingModel(Base):
     device = relationship("DeviceModel", back_populates="findings")
 
 class RuleModel(Base):
-    __tablename__ = "rules"
+    __tablename__ = "ng_rules"
 
     rule_id = Column(String(50), primary_key=True)
     title = Column(String(255), nullable=False)
@@ -126,7 +126,7 @@ class BlockModel(Base):
     as a SHA-256 data_hash and links to the previous block via previous_hash,
     forming an immutable chain. Satisfies NIST AU-10 and ISO 27001 A.12.4.
     """
-    __tablename__ = "blockchain_blocks"
+    __tablename__ = "ng_blockchain_blocks"
 
     index = Column(Integer, primary_key=True)                        # Block position (0 = genesis)
     previous_hash = Column(String(64), nullable=False)               # SHA-256 hex of prior block

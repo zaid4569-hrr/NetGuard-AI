@@ -58,7 +58,11 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list:
-        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+        origins = [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+        production_origin = "https://netguard-ai-frontend.vercel.app"
+        if production_origin not in origins:
+            origins.append(production_origin)
+        return origins
 
     class Config:
         env_file = ".env"
