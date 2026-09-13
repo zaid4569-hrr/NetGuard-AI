@@ -3,7 +3,11 @@ import { Assessment, Device, ComplianceRule } from '../types';
 import { MOCK_ASSESSMENT, MOCK_RULES } from './mockData';
 import { firebaseAuth, isFirebaseConfigured } from './firebase';
 
-const API_BASE = '/api';
+// During local development Vite proxies `/api` to FastAPI. Production builds
+// use the Render URL supplied by Vercel, with a fallback for deployments where
+// the Vercel environment variable was not configured.
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = (configuredApiBase || (import.meta.env.DEV ? '/api' : 'https://netguard-ai-1qun.onrender.com/api')).replace(/\/$/, '');
 export const TOKEN_STORAGE_KEY = 'netguard_auth_token';
 
 // A single axios instance so every request automatically carries the
@@ -60,8 +64,9 @@ export interface AuthUser {
 }
 
 export interface AuthResponse {
-  access_token: string;
-  token_type: string;
+  access_token?: string;
+  token?: string;
+  token_type?: string;
   user: AuthUser;
 }
 
@@ -342,4 +347,51 @@ export const apiClient = {
     link.remove();
     window.URL.revokeObjectURL(url);
   }
+};
+
+// ── Blockchain Audit Ledger API ───────────────────────────────────────────────
+
+export interface BlockchainBlock {
+  index: number;
+  previous_hash: string;
+  timestamp: string;
+  assessment_id: string;
+  data_hash: string;
+  block_hash: string;
+}
+
+export interface ChainResponse {
+  length: number;
+  blocks: BlockchainBlock[];
+}
+
+export interface ChainVerifyResult {
+  valid: boolean;
+  length: number;
+  first_invalid_index: number | null;
+  message: string;
+}
+
+export const blockchainApi = {
+  /** Returns the full audit ledger chain, ordered genesis → tip. */
+  getChain: async (): Promise<ChainResponse> => {
+    try {
+      const res = await http.get('/blockchain/chain', { timeout: 8000 });
+      return res.data;
+    } catch {
+      return { length: 0, blocks: [] };
+    }
+  },
+
+  /** Recomputes every block hash and verifies the chain's integrity. */
+  verifyChain: async (): Promise<ChainVerifyResult> => {
+    const res = await http.get('/blockchain/verify', { timeout: 10000 });
+    return res.data;
+  },
+
+  /** Manually anchor a specific assessment to the ledger. */
+  anchorAssessment: async (assessmentId: string): Promise<BlockchainBlock> => {
+    const res = await http.post(`/blockchain/anchor/${assessmentId}`, {}, { timeout: 8000 });
+    return res.data;
+  },
 };

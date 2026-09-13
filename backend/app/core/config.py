@@ -13,8 +13,17 @@ class Settings(BaseSettings):
     REPORTS_DIR: Path = BASE_DIR / "reports"
     SAMPLE_CONFIGS_DIR: Path = BASE_DIR.parent / "sample_configs"
     
-    # SQLite Database URI
+    # Database URI (SQLite for local, PostgreSQL for Supabase / Cloud)
     DATABASE_URL: str = f"sqlite+aiosqlite:///{DATA_DIR}/netguard.db"
+
+    @property
+    def async_database_url(self) -> str:
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
     
     # Max upload limit (bytes): 20 MB
     MAX_FILE_SIZE_BYTES: int = 20 * 1024 * 1024
@@ -45,7 +54,7 @@ class Settings(BaseSettings):
     # allow_credentials=True is rejected by browsers anyway and is bad
     # practice even when it isn't. Add your deployed frontend origin here
     # (or override via CORS_ORIGINS env var, comma-separated).
-    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,https://netguard-ai-frontend.vercel.app,https://netguard-ai-frontend-o31tbgze4-zaid4569-hrr.vercel.app"
 
     @property
     def cors_origins_list(self) -> list:

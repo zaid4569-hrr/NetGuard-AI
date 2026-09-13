@@ -38,11 +38,11 @@ export const Dashboard: React.FC = () => {
 
   // Severity Distribution Data
   const severityData = [
-    { name: 'Critical', count: assessment.critical_count || 2, color: '#F43F5E', severity: 'CRITICAL' },
-    { name: 'High', count: assessment.high_count || 4, color: '#FB923C', severity: 'HIGH' },
-    { name: 'Medium', count: assessment.medium_count || 5, color: '#FBBF24', severity: 'MEDIUM' },
-    { name: 'Low', count: assessment.low_count || 3, color: '#38BDF8', severity: 'LOW' },
-    { name: 'Info', count: assessment.info_count || 1, color: '#94A3B8', severity: 'INFO' },
+    { name: 'Critical', count: assessment.critical_count, color: '#F43F5E', severity: 'CRITICAL' },
+    { name: 'High', count: assessment.high_count, color: '#FB923C', severity: 'HIGH' },
+    { name: 'Medium', count: assessment.medium_count, color: '#FBBF24', severity: 'MEDIUM' },
+    { name: 'Low', count: assessment.low_count, color: '#38BDF8', severity: 'LOW' },
+    { name: 'Info', count: assessment.info_count, color: '#94A3B8', severity: 'INFO' },
   ];
 
   const handleDownloadPdf = async () => {
@@ -87,9 +87,11 @@ export const Dashboard: React.FC = () => {
             <h1 className="text-xl font-bold text-white tracking-tight">
               {assessment.name}
             </h1>
-            <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300">
-              SYNTHETIC LAB
-            </span>
+            {isDemoData && (
+              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300">
+                SYNTHETIC LAB
+              </span>
+            )}
           </div>
           <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
             <Clock className="w-3.5 h-3.5 text-slate-500" />

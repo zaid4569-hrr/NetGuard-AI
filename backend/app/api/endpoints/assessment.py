@@ -16,6 +16,7 @@ from app.parsers.registry import ParserRegistry
 from app.compliance.engine import ComplianceEngine, RuleFindingResult
 from app.ai.summarizer import AISummarizer
 from app.api.deps import get_current_user
+from app.blockchain.ledger import BlockchainLedger
 
 router = APIRouter(prefix="/assessment", tags=["Assessments"])
 
@@ -171,6 +172,25 @@ async def upload_and_assess(
 
     db.add(assessment)
     await db.commit()
+
+    # Auto-anchor to the blockchain audit ledger (NIST AU-10 / ISO 27001 A.12.4).
+    # We do this in a best-effort try/except so a ledger failure never blocks
+    # the primary upload response — the assessment is already safely persisted.
+    try:
+        finding_count = (
+            overall_counts.get("CRITICAL", 0) + overall_counts.get("HIGH", 0)
+            + overall_counts.get("MEDIUM", 0) + overall_counts.get("LOW", 0)
+            + overall_counts.get("INFO", 0)
+        )
+        await BlockchainLedger.anchor_assessment(
+            db=db,
+            assessment_id=assessment_id,
+            overall_score=overall_score,
+            finding_count=finding_count,
+            created_at=str(assessment.created_at),
+        )
+    except Exception:
+        pass  # Ledger errors must never surface to the user
 
     # Query back populated assessment
     result = await db.execute(

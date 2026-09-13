@@ -7,11 +7,13 @@ from app.api.router import api_router
 # Import rules to ensure all security rules are registered at startup
 import app.compliance.rules
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize SQLite tables on startup
     await init_db()
     yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -32,6 +34,17 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.get("/api/healthz", tags=["System"])
+def api_health_check():
+    return {"status": "ok"}
+
+
+@app.get("/api", tags=["System"])
+def api_root():
+    return {"message": "NetGuard-AI backend running"}
+
 
 @app.get("/health", tags=["System"])
 async def health_check():

@@ -87,12 +87,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cachedProfile = localStorage.getItem('netguard_user_session');
     const parsedCache = cachedProfile ? JSON.parse(cachedProfile) : {};
     try {
-      const me = await authApi.me();
+      const meData = await authApi.me();
+      const me = (meData as any)?.user || meData;
+      if (!me || (!me.id && !me.email)) {
+        return;
+      }
       const restored: UserProfile = {
-        id: me.id,
-        email: me.email,
-        fullName: me.full_name || parsedCache.fullName || fallbackName || me.email.split('@')[0],
-        organizationName: me.organization_name || parsedCache.organizationName || 'Enterprise Security Workspace',
+        id: me.id || parsedCache.id || 'usr-default',
+        email: me.email || parsedCache.email || '',
+        fullName: me.full_name || me.fullName || parsedCache.fullName || fallbackName || (me.email ? me.email.split('@')[0] : 'Operator'),
+        organizationName: me.organization_name || me.organizationName || parsedCache.organizationName || 'Enterprise Security Workspace',
         activeWorkspaceId: parsedCache.activeWorkspaceId || 'ws-prod-01',
         onboardingCompleted: parsedCache.onboardingCompleted ?? true,
         preferredVendors: parsedCache.preferredVendors || ['Cisco', 'Fortinet'],
@@ -103,6 +107,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('netguard_user_session', JSON.stringify(restored));
     } catch (err) {
       console.warn('Could not sync profile with backend:', err);
+      if (parsedCache && parsedCache.email) {
+        setUser(parsedCache);
+      }
     }
   };
 
@@ -182,9 +189,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (err: any) {
       setIsLoading(false);
-      const message = isFirebaseConfigured
-        ? friendlyFirebaseError(err)
-        : (err?.response?.data?.detail || err.message || 'Invalid email or password.');
+      let message = 'Invalid email or password.';
+      if (isFirebaseConfigured) {
+        message = friendlyFirebaseError(err);
+      } else if (err?.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        message = Array.isArray(detail) ? detail.map((d: any) => d.msg).join(' ') : detail;
+      } else if (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error' || !err?.response) {
+        message = 'Unable to reach backend server. Please verify the server is running.';
+      } else if (err?.message) {
+        message = err.message;
+      }
       return { success: false, error: message };
     }
   };
@@ -207,13 +222,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (err: any) {
       setIsLoading(false);
-      const message = isFirebaseConfigured
-        ? friendlyFirebaseError(err)
-        : (err?.response?.data?.detail
-            ? (Array.isArray(err.response.data.detail)
-                ? err.response.data.detail.map((d: any) => d.msg).join(' ')
-                : err.response.data.detail)
-            : (err.message || 'Registration failed.'));
+      let message = 'Registration failed.';
+      if (isFirebaseConfigured) {
+        message = friendlyFirebaseError(err);
+      } else if (err?.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        message = Array.isArray(detail) ? detail.map((d: any) => d.msg).join(' ') : detail;
+      } else if (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error' || !err?.response) {
+        message = 'Unable to reach backend server. Please verify the server is running.';
+      } else if (err?.message) {
+        message = err.message;
+      }
       return { success: false, error: message };
     }
   };
@@ -242,16 +261,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // local UserProfile shape used throughout the rest of the app. Only used
   // in the non-Firebase (built-in backend JWT) path.
   const applyAuthResponse = (
-    authResp: { access_token: string; user: { id: string; email: string; full_name?: string | null; organization_name?: string | null } },
+    authResp: any,
     rememberSession: boolean,
     overrides: Partial<UserProfile> = {}
   ) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, authResp.access_token);
+    const accessToken = authResp?.access_token || authResp?.token;
+    if (!accessToken) {
+      throw new Error('The authentication server returned no session token.');
+    }
+    localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+    const userData = authResp.user || authResp;
+    const userEmail = userData.email || '';
     const profile: UserProfile = {
-      id: authResp.user.id,
-      email: authResp.user.email,
-      fullName: authResp.user.full_name || authResp.user.email.split('@')[0],
-      organizationName: authResp.user.organization_name || 'Enterprise Security Workspace',
+      id: userData.id || 'usr-default',
+      email: userEmail,
+      fullName: userData.full_name || userData.fullName || (userEmail ? userEmail.split('@')[0] : 'Operator'),
+      organizationName: userData.organization_name || userData.organizationName || 'Enterprise Security Workspace',
       activeWorkspaceId: 'ws-prod-01',
       onboardingCompleted: true,
       preferredVendors: ['Cisco', 'Fortinet', 'Juniper'],
@@ -360,13 +385,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const authResp = await authApi.login(demoEmail, demoPassword);
           applyAuthResponse(authResp, true, { fullName: 'Alex Vance', organizationName: 'Global Cyber Defense Corp' });
         } catch {
-          // Demo account doesn't exist yet on this backend instance — create it.
-          const authResp = await authApi.signup('Alex Vance', demoEmail, demoPassword);
-          applyAuthResponse(authResp, true, { organizationName: 'Global Cyber Defense Corp' });
+          try {
+            // Demo account doesn't exist yet on this backend instance — create it.
+            const authResp = await authApi.signup('Alex Vance', demoEmail, demoPassword);
+            applyAuthResponse(authResp, true, { organizationName: 'Global Cyber Defense Corp' });
+          } catch {
+            // Instant offline fallback if backend is sleeping or offline
+            const fallbackDemoUser: UserProfile = {
+              id: 'demo-analyst-001',
+              email: demoEmail,
+              fullName: 'Alex Vance',
+              organizationName: 'Global Cyber Defense Corp',
+              activeWorkspaceId: 'ws-prod-01',
+              onboardingCompleted: true,
+              preferredVendors: ['Cisco', 'Fortinet', 'Juniper'],
+              securityPriorities: ['Network Hardening', 'CIS Compliance']
+            };
+            setUser(fallbackDemoUser);
+            localStorage.setItem('netguard_user_session', JSON.stringify(fallbackDemoUser));
+          }
         }
       }
     } catch (err) {
-      console.warn('Demo login failed:', err);
+      console.warn('Demo login failed, using offline demo session:', err);
+      const fallbackDemoUser: UserProfile = {
+        id: 'demo-analyst-001',
+        email: demoEmail,
+        fullName: 'Alex Vance',
+        organizationName: 'Global Cyber Defense Corp',
+        activeWorkspaceId: 'ws-prod-01',
+        onboardingCompleted: true,
+        preferredVendors: ['Cisco', 'Fortinet', 'Juniper'],
+        securityPriorities: ['Network Hardening', 'CIS Compliance']
+      };
+      setUser(fallbackDemoUser);
+      localStorage.setItem('netguard_user_session', JSON.stringify(fallbackDemoUser));
     } finally {
       setIsLoading(false);
     }

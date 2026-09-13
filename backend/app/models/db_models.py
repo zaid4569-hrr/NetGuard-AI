@@ -116,3 +116,21 @@ class RuleModel(Base):
     cis_benchmark_ref = Column(String(100), nullable=True)
     nist_ref = Column(String(100), nullable=True)
     iso27001_ref = Column(String(100), nullable=True)
+
+
+class BlockModel(Base):
+    """
+    Represents a single block in the NetGuard AI tamper-evident audit ledger.
+
+    Each block anchors one assessment's key metrics (score + finding count)
+    as a SHA-256 data_hash and links to the previous block via previous_hash,
+    forming an immutable chain. Satisfies NIST AU-10 and ISO 27001 A.12.4.
+    """
+    __tablename__ = "blockchain_blocks"
+
+    index = Column(Integer, primary_key=True)                        # Block position (0 = genesis)
+    previous_hash = Column(String(64), nullable=False)               # SHA-256 hex of prior block
+    timestamp = Column(String(50), nullable=False)                   # ISO-8601 UTC anchoring time
+    assessment_id = Column(String(36), nullable=False, index=True)   # UUID of anchored assessment
+    data_hash = Column(String(64), nullable=False)                   # SHA-256 of assessment payload
+    block_hash = Column(String(64), nullable=False, unique=True)     # SHA-256 of the whole block

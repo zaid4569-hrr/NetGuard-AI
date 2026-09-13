@@ -12,15 +12,32 @@ from typing import Optional
 
 import bcrypt
 import jwt
-from google.auth.exceptions import GoogleAuthError
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token as google_id_token
 
 from app.core.config import settings
 
 # Bcrypt truncates at 72 bytes; reject anything longer up front with a
 # clear error rather than silently truncating the password.
 _MAX_PASSWORD_BYTES = 72
+
+# Lazy-import google-auth so the backend starts cleanly even when the
+# `requests` transport package is not installed AND Firebase is not
+# configured. The import is only exercised at call-time inside
+# decode_firebase_token(), which itself early-exits if FIREBASE_PROJECT_ID
+# is empty.
+_google_auth_available: Optional[bool] = None
+
+
+def _check_google_auth() -> bool:
+    """Returns True if google-auth + requests are both importable."""
+    global _google_auth_available
+    if _google_auth_available is None:
+        try:
+            import google.auth.transport.requests  # noqa: F401
+            import google.oauth2.id_token  # noqa: F401
+            _google_auth_available = True
+        except (ImportError, Exception):
+            _google_auth_available = False
+    return _google_auth_available
 
 
 def hash_password(plain_password: str) -> str:
@@ -73,7 +90,14 @@ def decode_firebase_token(token: str) -> Optional[dict]:
     """
     if not settings.FIREBASE_PROJECT_ID:
         return None
+    if not _check_google_auth():
+        # google-auth / requests not installed — Firebase verification unavailable.
+        return None
     try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.exceptions import GoogleAuthError
+
         # A fresh Request() per call is deliberately cheap here — google-auth
         # caches certs internally based on HTTP cache-control headers, so
         # this doesn't refetch on every single request in practice.
@@ -83,5 +107,5 @@ def decode_firebase_token(token: str) -> Optional[dict]:
             audience=settings.FIREBASE_PROJECT_ID,
         )
         return claims
-    except (ValueError, GoogleAuthError):
+    except Exception:
         return None

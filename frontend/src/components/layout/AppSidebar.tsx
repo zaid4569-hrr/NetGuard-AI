@@ -4,7 +4,8 @@ import {
   Shield, LayoutDashboard, AlertOctagon, UploadCloud, Server, 
   Search, GitCompare, Wrench, Sparkles, Network, 
   TrendingUp, CheckSquare, BookOpen, FileText, Layers, 
-  Settings, LogOut, ChevronLeft, ChevronRight, Bell
+  Settings, LogOut, ChevronLeft, ChevronRight, Bell,
+  Link2, SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -38,6 +39,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed, onToggle }) =
         { label: 'Findings', path: '/findings', icon: Search },
         { label: 'Compare Configs', path: '/compare', icon: GitCompare },
         { label: 'Remediation', path: '/remediation', icon: Wrench },
+        { label: 'Config Advisor', path: '/config-advisor', icon: SlidersHorizontal },
       ]
     },
     {
@@ -53,6 +55,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ collapsed, onToggle }) =
       items: [
         { label: 'Compliance', path: '/compliance', icon: CheckSquare },
         { label: 'Rule Catalog', path: '/rules', icon: BookOpen },
+        { label: 'Blockchain Ledger', path: '/blockchain', icon: Link2, badge: 'CHAIN' },
         { label: 'Reports', path: '/reports', icon: FileText },
       ]
     },

@@ -57,7 +57,10 @@ async def query_copilot(
     if req.assessment_id:
         res = await db.execute(
             select(AssessmentModel)
-            .options(selectinload(AssessmentModel.devices), selectinload(AssessmentModel.findings))
+            .options(
+                selectinload(AssessmentModel.devices),
+                selectinload(AssessmentModel.findings).selectinload(FindingModel.device),
+            )
             .where(AssessmentModel.id == req.assessment_id, AssessmentModel.user_id == current_user.id)
         )
         assessment = res.scalar_one_or_none()
@@ -65,7 +68,10 @@ async def query_copilot(
     if not assessment:
         res = await db.execute(
             select(AssessmentModel)
-            .options(selectinload(AssessmentModel.devices), selectinload(AssessmentModel.findings))
+            .options(
+                selectinload(AssessmentModel.devices),
+                selectinload(AssessmentModel.findings).selectinload(FindingModel.device),
+            )
             .where(AssessmentModel.user_id == current_user.id)
             .order_by(desc(AssessmentModel.created_at))
             .limit(1)

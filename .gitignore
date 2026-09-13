@@ -1,4 +1,28 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.pytest_cache/
+venv/
+.venv/
+
+# Database and reports
 backend/data/*.key
 backend/data/*.db
+backend/data/.jwt_secret
 backend/reports/
+
+# Vercel
+.vercel/

@@ -56,6 +56,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     { label: 'Security Center (SOC)', path: '/security-center', icon: AlertTriangle },
     { label: 'Run New Configuration Audit', path: '/audit', icon: Cpu },
     { label: 'AI Security Copilot', path: '/ai-copilot', icon: Command },
+    { label: 'Blockchain Audit Ledger', path: '/blockchain', icon: Shield },
+    { label: 'Config Advisor (Hardening)', path: '/config-advisor', icon: ArrowRight },
     { label: 'Compare Baseline Configs', path: '/compare', icon: ArrowRight },
     { label: 'Compliance Frameworks', path: '/compliance', icon: FileText },
     { label: 'Documentation Hub', path: '/docs', icon: HelpCircle },

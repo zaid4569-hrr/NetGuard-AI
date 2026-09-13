@@ -1,1 +1,13 @@
-.vercel
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/

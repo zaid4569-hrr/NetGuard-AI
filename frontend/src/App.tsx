@@ -38,6 +38,8 @@ import { SecurityTrends } from './pages/SecurityTrends';
 import { AICopilot } from './pages/AICopilot';
 import { SettingsPage } from './pages/SettingsPage';
 import { ComingSoon } from './pages/ComingSoon';
+import { BlockchainLedgerPage } from './pages/BlockchainLedger';
+import { ConfigAdvisorPage } from './pages/ConfigAdvisorPage';
 
 const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ThemeProvider>
@@ -105,6 +107,8 @@ export const App: React.FC = () => {
             <Route path="/security-trends" element={<SecurityTrends />} />
             <Route path="/compliance" element={<ComplianceCenter />} />
             <Route path="/rules" element={<RuleCatalog />} />
+            <Route path="/blockchain" element={<BlockchainLedgerPage />} />
+            <Route path="/config-advisor" element={<ConfigAdvisorPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/profile" element={<SettingsPage />} />

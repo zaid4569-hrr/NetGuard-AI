@@ -37,6 +37,11 @@ def run_all():
     from tests.test_ai_correlation import (
         test_ai_attack_chain_correlation, test_ai_executive_summarizer
     )
+    from tests.test_blockchain import test_blockchain_genesis_and_chaining
+    import asyncio
+
+    def run_blockchain_test():
+        asyncio.run(test_blockchain_genesis_and_chaining())
 
     tests = [
         ("Secret Sanitizer & Zero-Leakage (Cisco)", test_cisco_secret_masking),
@@ -60,6 +65,7 @@ def run_all():
         ("Clean Baseline 100% Score Test", test_clean_device_score),
         ("AI Attack Graph Threat Correlation", test_ai_attack_chain_correlation),
         ("AI NLP Executive Summarizer", test_ai_executive_summarizer),
+        ("Blockchain Cryptographic Audit Ledger & Tamper Detection", run_blockchain_test),
     ]
 
     passed = 0

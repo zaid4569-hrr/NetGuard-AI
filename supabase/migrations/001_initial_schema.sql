@@ -106,6 +106,20 @@ CREATE TABLE IF NOT EXISTS public.reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- PostgreSQL does not create indexes for foreign keys. These keep workspace
+-- filtering and cascading deletes responsive as audit history grows.
+CREATE INDEX IF NOT EXISTS workspaces_owner_id_idx ON public.workspaces (owner_id);
+CREATE INDEX IF NOT EXISTS workspace_members_user_id_idx ON public.workspace_members (user_id);
+CREATE INDEX IF NOT EXISTS audits_workspace_id_idx ON public.audits (workspace_id);
+CREATE INDEX IF NOT EXISTS audits_user_id_idx ON public.audits (user_id);
+CREATE INDEX IF NOT EXISTS devices_audit_id_idx ON public.devices (audit_id);
+CREATE INDEX IF NOT EXISTS devices_workspace_id_idx ON public.devices (workspace_id);
+CREATE INDEX IF NOT EXISTS findings_audit_id_idx ON public.findings (audit_id);
+CREATE INDEX IF NOT EXISTS findings_device_id_idx ON public.findings (device_id);
+CREATE INDEX IF NOT EXISTS findings_workspace_id_idx ON public.findings (workspace_id);
+CREATE INDEX IF NOT EXISTS reports_audit_id_idx ON public.reports (audit_id);
+CREATE INDEX IF NOT EXISTS reports_workspace_id_idx ON public.reports (workspace_id);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
@@ -128,61 +142,80 @@ BEGIN
         AND user_id = auth.uid()
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- SECURITY DEFINER is necessary here to avoid recursive RLS evaluation, but
+-- it must not remain callable by every database role.
+REVOKE ALL ON FUNCTION public.is_workspace_member(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_workspace_member(UUID) TO authenticated;
 
 -- Profiles: Users can view and update their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
-    ON public.profiles FOR SELECT
-    USING (auth.uid() = id);
+    ON public.profiles FOR SELECT TO authenticated
+    USING ((SELECT auth.uid()) = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
-    ON public.profiles FOR UPDATE
-    USING (auth.uid() = id);
+    ON public.profiles FOR UPDATE TO authenticated
+    USING ((select auth.uid()) = id)
+    WITH CHECK ((select auth.uid()) = id);
 
 -- Workspaces: Members can view their workspaces
+DROP POLICY IF EXISTS "Workspace members can view workspaces" ON public.workspaces;
 CREATE POLICY "Workspace members can view workspaces"
-    ON public.workspaces FOR SELECT
+    ON public.workspaces FOR SELECT TO authenticated
     USING (public.is_workspace_member(id) OR owner_id = auth.uid());
 
+DROP POLICY IF EXISTS "Authenticated users can create workspaces" ON public.workspaces;
 CREATE POLICY "Authenticated users can create workspaces"
-    ON public.workspaces FOR INSERT
+    ON public.workspaces FOR INSERT TO authenticated
     WITH CHECK (auth.uid() = owner_id);
 
 -- Workspace Members
+DROP POLICY IF EXISTS "Members can view workspace rosters" ON public.workspace_members;
 CREATE POLICY "Members can view workspace rosters"
-    ON public.workspace_members FOR SELECT
+    ON public.workspace_members FOR SELECT TO authenticated
     USING (public.is_workspace_member(workspace_id));
 
 -- Audits: Isolated by workspace membership
+DROP POLICY IF EXISTS "Users can view audits in their workspaces" ON public.audits;
 CREATE POLICY "Users can view audits in their workspaces"
-    ON public.audits FOR SELECT
+    ON public.audits FOR SELECT TO authenticated
     USING (public.is_workspace_member(workspace_id));
 
+DROP POLICY IF EXISTS "Users can create audits in their workspaces" ON public.audits;
 CREATE POLICY "Users can create audits in their workspaces"
-    ON public.audits FOR INSERT
+    ON public.audits FOR INSERT TO authenticated
     WITH CHECK (public.is_workspace_member(workspace_id));
 
+DROP POLICY IF EXISTS "Users can delete audits in their workspaces" ON public.audits;
 CREATE POLICY "Users can delete audits in their workspaces"
-    ON public.audits FOR DELETE
+    ON public.audits FOR DELETE TO authenticated
     USING (public.is_workspace_member(workspace_id));
 
 -- Devices: Isolated by workspace
+DROP POLICY IF EXISTS "Users can view devices in their workspaces" ON public.devices;
 CREATE POLICY "Users can view devices in their workspaces"
-    ON public.devices FOR SELECT
+    ON public.devices FOR SELECT TO authenticated
     USING (public.is_workspace_member(workspace_id));
 
 -- Findings: Isolated by workspace
+DROP POLICY IF EXISTS "Users can view findings in their workspaces" ON public.findings;
 CREATE POLICY "Users can view findings in their workspaces"
-    ON public.findings FOR SELECT
+    ON public.findings FOR SELECT TO authenticated
     USING (public.is_workspace_member(workspace_id));
 
+DROP POLICY IF EXISTS "Users can update findings status in their workspaces" ON public.findings;
 CREATE POLICY "Users can update findings status in their workspaces"
-    ON public.findings FOR UPDATE
-    USING (public.is_workspace_member(workspace_id));
+    ON public.findings FOR UPDATE TO authenticated
+    USING (public.is_workspace_member(workspace_id))
+    WITH CHECK (public.is_workspace_member(workspace_id));
 
 -- Reports: Isolated by workspace
+DROP POLICY IF EXISTS "Users can view reports in their workspaces" ON public.reports;
 CREATE POLICY "Users can view reports in their workspaces"
-    ON public.reports FOR SELECT
+    ON public.reports FOR SELECT TO authenticated
     USING (public.is_workspace_member(workspace_id));
 
 -- 9. AUTO-CREATE PROFILE ON AUTH USER REGISTRATION (TRIGGER)
@@ -212,6 +245,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
