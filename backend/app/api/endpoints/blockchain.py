@@ -2,7 +2,7 @@
 Blockchain Audit Ledger API endpoints.
 
 Provides three REST endpoints:
-  GET  /api/blockchain/chain        — Return the full audit chain
+    GET  /api/blockchain/chain        — Return the requesting user's audit anchors
   GET  /api/blockchain/verify       — Verify chain integrity
   POST /api/blockchain/anchor/{id}  — Manually anchor a specific assessment
 
@@ -11,6 +11,7 @@ Auto-anchoring on assessment upload is handled in assessment.py.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -55,8 +56,16 @@ async def get_chain(
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
 ):
-    """Returns the full blockchain audit ledger, ordered genesis → tip."""
-    blocks = await BlockchainLedger.get_chain(db)
+    """Returns this user's assessment anchors, ordered by global chain index."""
+    # The chain is global for integrity verification, but assessment IDs are
+    # tenant data. Only return anchors belonging to the authenticated user.
+    result = await db.execute(
+        select(BlockModel)
+        .join(AssessmentModel, BlockModel.assessment_id == AssessmentModel.id)
+        .where(AssessmentModel.user_id == current_user.id)
+        .order_by(BlockModel.index.asc())
+    )
+    blocks = list(result.scalars().all())
     return ChainResponse(length=len(blocks), blocks=blocks)
 
 
@@ -95,7 +104,7 @@ async def anchor_assessment(
         select(AssessmentModel).where(
             AssessmentModel.id == assessment_id,
             AssessmentModel.user_id == current_user.id,
-        )
+        ).options(selectinload(AssessmentModel.findings))
     )
     assessment = result.scalar_one_or_none()
     if not assessment:
@@ -125,5 +134,22 @@ async def anchor_assessment(
         overall_score=assessment.overall_score,
         finding_count=finding_count,
         created_at=str(assessment.created_at),
+        findings=[
+            {
+                "rule_id": finding.rule_id,
+                "title": finding.title,
+                "category": finding.category,
+                "severity": finding.severity,
+                "evidence": finding.evidence,
+                "explanation": finding.explanation,
+                "recommendation": finding.recommendation,
+                "remediation_script": finding.remediation_script,
+                "cis_reference": finding.cis_reference,
+                "nist_reference": finding.nist_reference,
+                "iso27001_reference": finding.iso27001_reference,
+                "confidence": finding.confidence,
+            }
+            for finding in assessment.findings
+        ],
     )
     return block

@@ -131,10 +131,10 @@ export const AuditPage: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white tracking-tight">
-          New Configuration Security Audit
+          New Configuration & Log Security Audit
         </h1>
         <p className="text-xs text-slate-400 mt-1">
-          Upload multi-vendor router, switch, or firewall configurations for privacy-preserving local compliance evaluation.
+          Upload multi-vendor configurations for compliance evaluation, or security logs for explainable unusual-activity triage.
         </p>
       </div>
 
@@ -186,7 +186,7 @@ export const AuditPage: React.FC = () => {
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-white">Assessment Complete</h2>
             <p className="text-xs text-slate-400">
-              Evaluated {completedAssessment.total_devices} configuration(s). Score: <b className="text-cyan-400 font-mono text-base">{completedAssessment.overall_score.toFixed(1)} / 100</b>
+              Evaluated {completedAssessment.total_devices} input source(s). Score: <b className="text-cyan-400 font-mono text-base">{completedAssessment.overall_score.toFixed(1)} / 100</b>
             </p>
           </div>
 
@@ -256,7 +256,7 @@ export const AuditPage: React.FC = () => {
                 multiple
                 onChange={handleFileInput}
                 className="hidden"
-                accept=".cfg,.conf,.rsc,.xml,.txt"
+                accept=".cfg,.conf,.rsc,.xml,.txt,.log,.syslog,.jsonl"
               />
               <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
                 <UploadCloud className="w-7 h-7" />

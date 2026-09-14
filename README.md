@@ -7,7 +7,7 @@
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4%2B-38B2AC.svg)](https://tailwindcss.com/)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local%20Execution-emerald.svg)](#privacy-model)
 
-> **NetGuard AI** is a privacy-preserving, local-first, AI-driven multi-vendor network security compliance auditor that transforms heterogeneous network configurations into a unified security assessment, identifies vulnerabilities and policy violations, prioritizes risks, and provides actionable remediation without exposing sensitive network configuration data.
+> **NetGuard AI** is a privacy-preserving, local-first, AI-driven multi-vendor network security compliance auditor that transforms heterogeneous network configurations and security logs into a unified security assessment, identifies policy violations and unusual-activity indicators, prioritizes risks, and provides actionable remediation without exposing sensitive network data.
 
 ---
 
@@ -22,6 +22,7 @@ Modern enterprise network infrastructures are heterogeneous, consisting of route
 ## 🚀 Key Features
 
 - **Multi-Vendor Support**: Native AST and block-syntax parsing for **Cisco IOS/IOS-XE**, **Fortinet FortiGate**, and **Juniper Junos** using an extensible adapter pattern.
+- **Security Log Triage**: Accepts `.log`, `.syslog`, and `.jsonl` text files and detects explainable indicators such as repeated authentication failures, successful logins after failures, scans, deny bursts, privilege activity, and unexpected configuration changes.
 - **Privacy-First Zero-Egress Engine**: Built-in deterministic regex & high-entropy secret masking that redacts passwords, hashes, enable secrets, VPN pre-shared keys, and SNMP communities in memory.
 - **Canonical Normalized Security Model**: Unifies disparate vendor configuration syntaxes into a strongly-typed, standardized Pydantic data model.
 - **25+ Deterministic Compliance Rules**: Evaluates hardening baselines across 8 security domains mapped to **CIS Benchmarks**, **NIST SP 800-53**, and **ISO/IEC 27001**.
@@ -110,7 +111,7 @@ Modern enterprise network infrastructures are heterogeneous, consisting of route
 
 | Security Requirement | Implementation in NetGuard AI |
 | :--- | :--- |
-| **No External Cloud Transmission** | All AST normalization, rule evaluations, scoring, and PDF rendering run in the local Python runtime. |
+| **No External Cloud Transmission** | All AST normalization, log triage, rule evaluations, scoring, and PDF rendering run in the local Python runtime. |
 | **Secret Redaction** | High-entropy regex filter intercepts passwords, enable secrets, VPN PSKs, SNMP communities, and RSA private keys in memory. |
 | **Evidence Confinement** | Generated evidence strings in API responses, SQLite DB, and PDF reports only expose sanitized tokens. |
 | **Untrusted File Protections** | Strict filename path-traversal sanitization (`os.path.basename`) and file size caps (20MB max). |

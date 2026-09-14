@@ -13,6 +13,7 @@ from app.schemas.api_schemas import AssessmentDetailResponse, AssessmentSummaryR
 from app.security.validator import FileSecurityValidator
 from app.security.sanitizer import SecuritySanitizer
 from app.parsers.registry import ParserRegistry
+from app.parsers.log_analyzer import analyze_log, looks_like_log
 from app.compliance.engine import ComplianceEngine, RuleFindingResult
 from app.ai.summarizer import AISummarizer
 from app.api.deps import get_current_user
@@ -29,9 +30,10 @@ async def upload_and_assess(
     current_user: UserModel = Depends(get_current_user)
 ):
     """
-    Ingests one or multiple network configuration files.
-    Performs local in-memory secret sanitization, vendor autodetection,
-    AST normalization, compliance rule auditing, scoring, and AI threat correlation.
+    Ingests one or multiple network configuration or security log files.
+    Configurations are normalized into the vendor-neutral model; logs are
+    analyzed with bounded, explainable anomaly heuristics. Both paths produce
+    the same persisted findings, scores, AI correlation, and ledger anchor.
     """
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files uploaded.")
@@ -60,15 +62,28 @@ async def upload_and_assess(
 
         raw_text = raw_bytes.decode("utf-8", errors="replace")
 
-        # Step 1: Parse and normalize (includes internal sanitization)
-        normalized_config, vendor, confidence = ParserRegistry.auto_detect_and_parse(
-            raw_text=raw_text,
-            filename=clean_filename,
-            manual_vendor_override=manual_vendor
-        )
+        if looks_like_log(clean_filename, raw_text):
+            # Logs do not contain a device configuration AST. Keep their
+            # findings in the same assessment contract for shared reporting.
+            log_result = analyze_log(raw_text=raw_text, filename=clean_filename)
+            normalized_config = None
+            vendor = "Log Analyzer"
+            confidence = log_result.confidence
+            hostname = log_result.hostname
+            device_type = "Security Log"
+            findings = log_result.findings
+        else:
+            # Step 1: Parse and normalize (includes internal sanitization)
+            normalized_config, vendor, confidence = ParserRegistry.auto_detect_and_parse(
+                raw_text=raw_text,
+                filename=clean_filename,
+                manual_vendor_override=manual_vendor
+            )
+            hostname = normalized_config.metadata.hostname
+            device_type = normalized_config.metadata.device_type
 
-        # Step 2: Run Compliance Rule Audit
-        findings: List[RuleFindingResult] = ComplianceEngine.run_audit(normalized_config)
+            # Step 2: Run Compliance Rule Audit
+            findings = ComplianceEngine.run_audit(normalized_config)
         all_findings_list.extend(findings)
 
         # Step 3: Compute Device Scores
@@ -76,19 +91,19 @@ async def upload_and_assess(
         device_scores_list.append(dev_score)
 
         device_id = str(uuid.uuid4())
-        device_findings_map[normalized_config.metadata.hostname] = findings
-        device_types_map[device_id] = normalized_config.metadata.device_type
+        device_findings_map[hostname] = findings
+        device_types_map[device_id] = device_type
 
         # Create Device DB Record
         dev_model = DeviceModel(
             id=device_id,
             assessment_id=assessment_id,
             filename=clean_filename,
-            hostname=normalized_config.metadata.hostname,
+            hostname=hostname,
             vendor=vendor,
             vendor_confidence=confidence,
-            os_version=normalized_config.metadata.os_version,
-            device_type=normalized_config.metadata.device_type,
+            os_version=normalized_config.metadata.os_version if normalized_config else None,
+            device_type=device_type,
             security_score=dev_score,
             critical_count=dev_counts["CRITICAL"],
             high_count=dev_counts["HIGH"],
@@ -188,6 +203,7 @@ async def upload_and_assess(
             overall_score=overall_score,
             finding_count=finding_count,
             created_at=str(assessment.created_at),
+            findings=[finding.model_dump() for finding in all_findings_list],
         )
     except Exception:
         pass  # Ledger errors must never surface to the user

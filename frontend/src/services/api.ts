@@ -154,6 +154,10 @@ export const apiClient = {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         throw new Error('Your session has expired. Please log in again.');
       }
+      if (axios.isAxiosError(err) && err.response) {
+        const detail = err.response.data?.detail;
+        throw new Error(typeof detail === 'string' ? detail : 'The backend rejected the audit upload.');
+      }
       console.warn('Backend upload failed or offline. Using simulated assessment result.', err);
       return MOCK_ASSESSMENT;
     }

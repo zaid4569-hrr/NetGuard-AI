@@ -48,7 +48,7 @@ class AISummarizer:
             action_tone = "Immediate tactical intervention is required to prevent imminent unauthorized administrative takeover."
 
         summary_lines = [
-            f"NetGuard AI conducted a multi-vendor security audit across {total_devices} network device(s), resulting in an overall security posture score of {overall_score}/100.",
+            f"NetGuard AI conducted a multi-vendor security audit across {total_devices} configuration or log source(s), resulting in an overall security posture score of {overall_score}/100.",
             f"The environment is currently {health_status}.",
             f"A total of {len(all_findings)} compliance finding(s) were identified: {crit} Critical, {high} High, {med} Medium, and {low} Low.",
         ]

@@ -72,14 +72,14 @@ export const DocsPage: React.FC = () => {
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-white">Getting Started with NetGuard AI</h2>
               <p>
-                NetGuard AI is a privacy-first, zero-egress multi-vendor network security posture and configuration compliance auditor.
+                NetGuard AI is a privacy-first, zero-egress multi-vendor network security posture, configuration compliance, and security-log triage auditor.
                 All parsing, rule evaluations, scoring algorithms, and report generation execute strictly on your local infrastructure.
               </p>
               <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
                 <h4 className="font-semibold text-cyan-400">Quick Workflow</h4>
                 <ol className="list-decimal list-inside space-y-1 text-slate-400">
                   <li>Navigate to <b>New Audit</b> in the left sidebar.</li>
-                  <li>Drag and drop network configuration files (.cfg, .conf, .rsc, .xml).</li>
+                  <li>Drag and drop network configuration or security log files (.cfg, .conf, .rsc, .xml, .log, .syslog, .jsonl).</li>
                   <li>Watch the live zero-egress parsing pipeline sanitize secrets and execute compliance audits.</li>
                   <li>Review the overall score, critical exposures, attack chains, and vendor CLI remediation scripts.</li>
                 </ol>

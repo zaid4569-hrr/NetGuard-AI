@@ -11,7 +11,10 @@ class FileSecurityValidator:
     - Binary or malicious non-text payloads
     """
 
-    ALLOWED_EXTENSIONS = {".cfg", ".conf", ".txt", ".ios", ".junos", ".fgt", ".log"}
+    ALLOWED_EXTENSIONS = {
+        ".cfg", ".conf", ".txt", ".ios", ".junos", ".fgt", ".rsc", ".xml", ".set",
+        ".log", ".syslog", ".jsonl"
+    }
 
     @classmethod
     def sanitize_filename(cls, filename: str) -> str:
@@ -42,6 +45,19 @@ class FileSecurityValidator:
                 detail=f"File {filename} is empty."
             )
 
+        suffix = Path(filename).suffix.lower()
+        if suffix not in cls.ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Unsupported file type {suffix or '(none)'}. Upload a network configuration or security log text file."
+            )
+
+        if b"\x00" in content_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File {filename} appears to be binary. Only plain text network configuration and security log files are supported."
+            )
+
         # Ensure content is decodable as text (UTF-8 / Latin-1 / ASCII)
         try:
             content_bytes.decode("utf-8")
@@ -51,5 +67,5 @@ class FileSecurityValidator:
             except UnicodeDecodeError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"File {filename} appears to be a binary file. Only plain text network configuration files are supported."
+                    detail=f"File {filename} appears to be a binary file. Only plain text network configuration and security log files are supported."
                 )

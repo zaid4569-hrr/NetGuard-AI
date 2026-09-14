@@ -65,6 +65,9 @@ def create_access_token(subject: str, expires_minutes: Optional[int] = None) -> 
         "sub": subject,
         "iat": datetime.now(timezone.utc),
         "exp": expire,
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "typ": "access",
     }
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
@@ -72,7 +75,16 @@ def create_access_token(subject: str, expires_minutes: Optional[int] = None) -> 
 def decode_access_token(token: str) -> Optional[str]:
     """Returns the user id (subject) if the token is valid, else None."""
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+            issuer=settings.JWT_ISSUER,
+            audience=settings.JWT_AUDIENCE,
+            options={"require": ["sub", "iat", "exp", "iss", "aud", "typ"]},
+        )
+        if payload.get("typ") != "access":
+            return None
         return payload.get("sub")
     except jwt.PyJWTError:
         return None

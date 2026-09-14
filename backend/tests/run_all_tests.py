@@ -38,6 +38,10 @@ def run_all():
         test_ai_attack_chain_correlation, test_ai_executive_summarizer
     )
     from tests.test_blockchain import test_blockchain_genesis_and_chaining
+    from tests.test_log_analyzer import (
+        test_log_analyzer_detects_unusual_activity_without_secret_leakage,
+        test_benign_log_has_no_anomaly_findings,
+    )
     import asyncio
 
     def run_blockchain_test():
@@ -66,6 +70,8 @@ def run_all():
         ("AI Attack Graph Threat Correlation", test_ai_attack_chain_correlation),
         ("AI NLP Executive Summarizer", test_ai_executive_summarizer),
         ("Blockchain Cryptographic Audit Ledger & Tamper Detection", run_blockchain_test),
+        ("Security Log Unusual Activity Detection", test_log_analyzer_detects_unusual_activity_without_secret_leakage),
+        ("Benign Security Log Baseline", test_benign_log_has_no_anomaly_findings),
     ]
 
     passed = 0

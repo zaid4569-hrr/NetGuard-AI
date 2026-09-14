@@ -1,4 +1,5 @@
 from pathlib import Path
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -40,7 +41,13 @@ class Settings(BaseSettings):
     # restarts without ever hardcoding a secret in source control.
     JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
+    JWT_ISSUER: str = "netguard-ai"
+    JWT_AUDIENCE: str = "netguard-api"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
+    # Host-header allow-list. Override this in production when using a custom
+    # domain; never use "*" for an internet-facing deployment.
+    ALLOWED_HOSTS: str = "localhost,127.0.0.1,netguard-ai-1qun.onrender.com"
 
     # Optional: if you enable Firebase Authentication on the frontend (see
     # README), set this to your Firebase project ID (Project Settings >
@@ -58,11 +65,19 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list:
-        origins = [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
-        production_origin = "https://netguard-ai-frontend.vercel.app"
-        if production_origin not in origins:
-            origins.append(production_origin)
-        return origins
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def allowed_hosts_list(self) -> list:
+        return [host.strip() for host in self.ALLOWED_HOSTS.split(",") if host.strip()]
+
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def validate_jwt_secret(cls, value: str) -> str:
+        # An empty value is replaced by the generated local secret below.
+        if value and len(value) < 32:
+            raise ValueError("JWT_SECRET_KEY must be at least 32 characters.")
+        return value
 
     class Config:
         env_file = ".env"

@@ -22,7 +22,7 @@ Block structure:
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,14 +35,27 @@ def _sha256(data: str) -> str:
     return hashlib.sha256(data.encode("utf-8")).digest().hex()
 
 
-def _compute_data_hash(assessment_id: str, overall_score: float, finding_count: int, created_at: str) -> str:
+def _compute_data_hash(
+    assessment_id: str,
+    overall_score: float,
+    finding_count: int,
+    created_at: str,
+    findings: Optional[List[Dict[str, Any]]] = None,
+) -> str:
     """
     Deterministic SHA-256 fingerprint of the assessment's key metrics.
     Changing any of these values after anchoring will change the data_hash,
     revealing tampering when the chain is re-verified.
     """
-    payload = f"{assessment_id}|{overall_score:.4f}|{finding_count}|{created_at}"
-    return _sha256(payload)
+    payload = {
+        "assessment_id": assessment_id,
+        "overall_score": round(overall_score, 4),
+        "finding_count": finding_count,
+        "created_at": created_at,
+        "findings": findings or [],
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return _sha256(canonical)
 
 
 def _compute_block_hash(index: int, previous_hash: str, timestamp: str,
@@ -91,6 +104,7 @@ class BlockchainLedger:
         overall_score: float,
         finding_count: int,
         created_at: str,
+        findings: Optional[List[Dict[str, Any]]] = None,
     ) -> BlockModel:
         """
         Creates a new block anchoring the given assessment to the chain.
@@ -102,7 +116,9 @@ class BlockchainLedger:
         previous_hash = latest.block_hash if latest else BlockchainLedger.GENESIS_PREVIOUS_HASH
 
         timestamp = datetime.now(timezone.utc).isoformat()
-        data_hash = _compute_data_hash(assessment_id, overall_score, finding_count, created_at)
+        data_hash = _compute_data_hash(
+            assessment_id, overall_score, finding_count, created_at, findings=findings
+        )
         block_hash = _compute_block_hash(index, previous_hash, timestamp, assessment_id, data_hash)
 
         block = BlockModel(

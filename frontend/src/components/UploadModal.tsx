@@ -87,8 +87,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               <Upload className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Import Configuration Files</h3>
-              <p className="text-xs text-gray-400">Cisco IOS, Fortinet FortiGate, and Juniper Junos supported</p>
+              <h3 className="text-base font-bold text-white">Import Configurations or Security Logs</h3>
+              <p className="text-xs text-gray-400">Configs are checked for compliance; logs are screened for unusual activity</p>
             </div>
           </div>
           <button
@@ -134,7 +134,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".cfg,.conf,.txt,.ios,.junos"
+              accept=".cfg,.conf,.txt,.ios,.junos,.fgt,.log,.syslog,.jsonl"
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
@@ -143,10 +143,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 <FileText className="w-6 h-6" />
               </div>
               <div className="text-xs text-gray-300 font-medium">
-                Drag & drop network configuration files here, or <span className="text-blue-400 font-semibold">browse files</span>
+                Drag & drop configurations or security logs here, or <span className="text-blue-400 font-semibold">browse files</span>
               </div>
               <p className="text-[11px] text-gray-500">
-                Supports single or batch upload (.cfg, .conf, .txt)
+                Supports batch upload (.cfg, .conf, .log, .syslog, .jsonl)
               </p>
             </div>
           </div>
