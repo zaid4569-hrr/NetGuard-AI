@@ -149,7 +149,7 @@ export const AuditPage: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-base font-bold text-white">Auditing Configuration Baselines</h3>
+            <h3 className="text-base font-bold text-white">Auditing Configurations & Security Logs</h3>
             <p className="text-xs text-cyan-300 font-mono">
               Step {analysisStep + 1} of {auditSteps.length}
             </p>
@@ -263,10 +263,10 @@ export const AuditPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-bold text-white">
-                  Drop configuration files here, or <span className="text-cyan-400 underline">browse</span>
+                  Drop configurations or security logs here, or <span className="text-cyan-400 underline">browse</span>
                 </p>
                 <p className="text-xs text-slate-500 mt-1 font-mono">
-                  Supports Cisco (.cfg), Juniper (.conf), Fortinet (.conf), Palo Alto (.xml), MikroTik (.rsc)
+                  Supports configs (.cfg, .conf, .xml, .rsc) and logs (.log, .syslog, .jsonl)
                 </p>
               </div>
             </div>
