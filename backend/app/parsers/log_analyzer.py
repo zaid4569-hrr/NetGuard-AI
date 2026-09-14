@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from app.compliance.engine import RuleFindingResult
+from app.parsers.detector import VendorDetector
 from app.security.sanitizer import SecuritySanitizer
 
 
@@ -40,6 +41,14 @@ _PRIVILEGE = re.compile(
 _CONFIG_CHANGE = re.compile(
     r"(?:configuration|config|policy|rule|startup-config).{0,35}(?:changed|modified|updated|committed|written)|"
     r"(?:changed|modified|updated|committed|written).{0,35}(?:configuration|config|policy|rule)",
+    re.IGNORECASE,
+)
+_LOG_SHAPE = re.compile(
+    r"(?:\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\b|"
+    r"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}|"
+    r"\b(?:INFO|WARN|WARNING|ERROR|CRITICAL|ALERT|NOTICE|DEBUG)\b|"
+    r"sshd\[\d+\]|%\w+-\d-|CEF:\d+|"
+    r"[\"'](?:timestamp|time|event|message|action|source_ip|src_ip)[\"']\s*:)",
     re.IGNORECASE,
 )
 
@@ -83,10 +92,18 @@ def _finding(
 def looks_like_log(filename: str, raw_text: str) -> bool:
     """Classify explicit log formats and common syslog/auth text without stealing config .txt files."""
     suffix = Path(filename).suffix.lower()
-    if suffix in {".log", ".syslog", ".jsonl"}:
-        return True
     sample = "\n".join(raw_text.splitlines()[:20])
-    return bool(re.search(r"(?:\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}|%\w+-\d-|sshd\[\d+\]|CEF:\d+)", sample))
+    return bool(_LOG_SHAPE.search(sample))
+
+
+def classify_input(filename: str, raw_text: str, manual_vendor_override: Optional[str] = None) -> Optional[str]:
+    """Return ``log`` or ``config`` only when content matches a supported audit path."""
+    if looks_like_log(filename, raw_text):
+        return "log"
+    if manual_vendor_override:
+        return "config"
+    _, confidence = VendorDetector.detect(raw_text)
+    return "config" if confidence >= 0.25 else None
 
 
 def analyze_log(raw_text: str, filename: str = "security.log") -> LogAnalysis:

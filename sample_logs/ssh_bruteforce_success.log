@@ -1,0 +1,7 @@
+Sep 14 10:00:01 edge-gw sshd[1842]: Failed password for admin from 198.51.100.44 port 41201 ssh2
+Sep 14 10:00:09 edge-gw sshd[1842]: Failed password for admin from 198.51.100.44 port 41209 ssh2
+Sep 14 10:00:18 edge-gw sshd[1842]: Failed password for admin from 198.51.100.44 port 41217 ssh2
+Sep 14 10:00:27 edge-gw sshd[1842]: Failed password for admin from 198.51.100.44 port 41225 ssh2
+Sep 14 10:00:36 edge-gw sshd[1842]: Failed password for admin from 198.51.100.44 port 41233 ssh2
+Sep 14 10:00:45 edge-gw sshd[1842]: Accepted password for admin from 198.51.100.44 port 41241 ssh2
+Sep 14 10:01:02 edge-gw sudo[1861]: admin privilege granted for command: show running-config

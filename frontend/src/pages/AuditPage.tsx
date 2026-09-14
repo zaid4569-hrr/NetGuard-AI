@@ -275,7 +275,7 @@ export const AuditPage: React.FC = () => {
             {files.length > 0 && (
               <div className="p-6 rounded-3xl bg-[#0B0F19] border border-slate-800 space-y-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-300">Staged Configurations ({files.length})</span>
+                  <span className="font-semibold text-slate-300">Staged Inputs ({files.length})</span>
                   <button
                     onClick={() => setFiles([])}
                     className="text-rose-400 hover:text-rose-300 text-[11px]"

@@ -1,0 +1,12 @@
+2026-09-14T11:20:01Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=22 protocol=tcp
+2026-09-14T11:20:02Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=23 protocol=tcp
+2026-09-14T11:20:03Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=80 protocol=tcp
+2026-09-14T11:20:04Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=443 protocol=tcp
+2026-09-14T11:20:05Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=3389 protocol=tcp
+2026-09-14T11:20:06Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=8080 protocol=tcp
+2026-09-14T11:20:07Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=8443 protocol=tcp
+2026-09-14T11:20:08Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=5900 protocol=tcp
+2026-09-14T11:20:09Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=445 protocol=tcp
+2026-09-14T11:20:10Z firewall action=deny src_ip=203.0.113.77 dst_ip=10.10.20.5 dst_port=1433 protocol=tcp
+2026-09-14T11:20:11Z network-monitor event="port scan detected" source_ip="203.0.113.77" target="10.10.20.0/24"
+2026-09-14T11:25:40Z admin event="configuration changed" device="edge-gw-01" actor="netadmin"

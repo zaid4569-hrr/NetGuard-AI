@@ -13,7 +13,7 @@ from app.schemas.api_schemas import AssessmentDetailResponse, AssessmentSummaryR
 from app.security.validator import FileSecurityValidator
 from app.security.sanitizer import SecuritySanitizer
 from app.parsers.registry import ParserRegistry
-from app.parsers.log_analyzer import analyze_log, looks_like_log
+from app.parsers.log_analyzer import analyze_log, classify_input
 from app.compliance.engine import ComplianceEngine, RuleFindingResult
 from app.ai.summarizer import AISummarizer
 from app.api.deps import get_current_user
@@ -37,6 +37,8 @@ async def upload_and_assess(
     """
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files uploaded.")
+    if manual_vendor and not ParserRegistry.get_parser(manual_vendor):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported vendor override: {manual_vendor}")
 
     assessment_id = str(uuid.uuid4())
     name = assessment_name or f"Audit Job — {datetime.utcnow().strftime('%b %d, %Y %H:%M')}"
@@ -62,7 +64,14 @@ async def upload_and_assess(
 
         raw_text = raw_bytes.decode("utf-8", errors="replace")
 
-        if looks_like_log(clean_filename, raw_text):
+        input_kind = classify_input(clean_filename, raw_text, manual_vendor)
+        if input_kind is None:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Could not recognize {clean_filename} as a supported network configuration or security log."
+            )
+
+        if input_kind == "log":
             # Logs do not contain a device configuration AST. Keep their
             # findings in the same assessment contract for shared reporting.
             log_result = analyze_log(raw_text=raw_text, filename=clean_filename)

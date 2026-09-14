@@ -1,0 +1,4 @@
+Sep 14 12:00:00 edge-gw sshd[2010]: Accepted publickey for netadmin from 192.0.2.10 port 50122 ssh2
+Sep 14 12:00:03 edge-gw ntpd[742]: synchronized to time server 192.0.2.1
+Sep 14 12:01:15 edge-gw firewall action=allow src_ip=10.10.10.12 dst_ip=10.10.20.5 dst_port=443 protocol=tcp
+Sep 14 12:02:30 edge-gw monitoring event="health check passed" service="central-syslog"

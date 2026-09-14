@@ -4,7 +4,7 @@ import sys
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.parsers.log_analyzer import analyze_log, looks_like_log
+from app.parsers.log_analyzer import analyze_log, classify_input, looks_like_log
 
 
 def test_log_analyzer_detects_unusual_activity_without_secret_leakage():
@@ -43,3 +43,16 @@ def test_benign_log_has_no_anomaly_findings():
 
     assert result.event_count == 1
     assert result.findings == []
+
+
+def test_unknown_text_is_not_treated_as_a_configuration_or_log():
+    raw = "This is an arbitrary text document and not a network audit input."
+
+    assert classify_input("notes.txt", raw) is None
+    assert classify_input("notes.log", raw) is None
+
+
+def test_manual_vendor_override_allows_valid_custom_configuration_text():
+    raw = "set system host-name edge-router"
+
+    assert classify_input("export.txt", raw, "Juniper") == "config"
